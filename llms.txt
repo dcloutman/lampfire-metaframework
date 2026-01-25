@@ -1,0 +1,52 @@
+# LLM Guidelines
+Project establishes a forkable starting point for a PHP application with an restful API and administrative panel that can manage the application's authentication and authorization features.
+
+## Tech Stack
+The project uses:
+- Slim framework for the controller layer
+- Atlas ORM (https://atlasphp.io/) for persistence layer access
+- Twig for templating
+
+## Project Goals
+The project will create a classic administrative panel that consumes the restful API and uses Twig to assist in creating reusable components. The administrative panel must:
+- Create / update / delete user records
+- Manage password resets
+- Create permissions and their associated programatic tokens
+- Group permissions into permission sets
+- Group users into user groups
+- Associate user groups with permission sets
+
+## Code Rules
+- Code is a human interface for the use by humans. Code readability is critical. This code will be read and modified by humans. Don't be slopp
+- DOCUMENTATION IS *MANDATORY*. Write all comments in clear, comprehensible English. English statements must include a subject and a verb and optionally direct or indirect objects. Use correct punctuation and capitalization. Writing comments with no initial capitalization or terminating punctuation is annoying.
+- Make use of PHP Composer features, such as the autoloader and namespaces
+- Follow PSR-12 code formatting conventions
+- Always use 4 space indentation in PHP, JavaScript, JSX, TypeScript, CSS, SCSS, SQL and any other file containing code, unless it would cause the code to not parse
+- Responses containing complex ternary statements will be rejected and downvoted.
+- Use explict type tests instead of truthy tests. The PHP `empty` function is officially banned from this project!
+- If `isset()` is used to test and array for the existence of a member that is not null in place of `array_key_exists('key', $array) && !is_null($array)` or it's equivalent, use an inline comment to explain the intent regarding null values
+- Use typed parameters and returns to prevent userland errors when consuming the prorgrammatic API. Most everything should be typed.
+- Avoid use of emojis in the code or user interface unless explicitly requested, which should be rare
+- If we're declaring global variables, we're going down the wrong path
+- There is a bias towards object oriented programming. We want to group things logically into classes around our data entities
+- API endpoints should be grouped into data-entity oriented controllers with `get`, `getById`, `post`, `put`, and `delete` endpoints
+- There should be an optional interface for GraphQL endpoints
+- `.env` files should be used for configurations
+- PHPUnit should be used for unit tests
+- Monolithic functions are bad. Build small, unit testable methods
+
+## Developer Tools
+- The project should provide a small Docker environment for development, initially with a PHP and MariaDB container
+- Build a client that can access the API from the command line and perform project setup and basic administrative tasks
+
+## Security Guidelines
+Security should be the primary focus of this project, followed by userland adaptability.
+- We use Argon 2 password hashing
+- We use non-sequential GUIDs for user id primary keys, not integers of any kind. Users should not be able to guess the user id of any particular user based on when the user was created.
+- JavaScript Web Token are BANNED from this project. Use Paseto tokens instead. Paseto are the only accepted security standard to use in this project.
+- As new upstream development occurs, we should be integrating new versions of the packages we use
+
+## User Interface
+- Avoid decorating the user interface with emojis. Layout should be professional and neutral with branding
+- We are design system neutral. Keep UI code minimalistic and adaptable to user requirements
+- Do not introduce external UI dependencies. Users will eventually choose to integrate their favorite tools

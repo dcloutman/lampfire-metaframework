@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        {% block meta %$}
+            <title>I need a title!</title>
+        {% endblock %}
+        {% block stylesheet %}<link rel="stylesheet" href="./css/main.css" />{% endblock %}
+    </head>
+    <body>
+        {% block content %}
+        <main>
+             <h1>I need some content</h1>
+        </main>
+        {% endblock %}
+    </body>
+    {% block endscripts %}
+        <script language="javascript">
+        </script>
+    {% endblock %}
+</html>

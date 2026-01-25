@@ -1,0 +1,20 @@
+# Don't commit actual configuration or environment files.
+.config
+.env*
+
+# Ignore compiled templates except for .gitkeep files.
+/cli/templates_compiled/*
+!/cli/templates_compiled/.gitkeep
+/code/templates_compiled/*
+!/code/templates_compiled/.gitkeep
+
+# Ignore vendor files.
+vendor/
+
+
+# No turd files, including OS generated files.
+*.swp
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
