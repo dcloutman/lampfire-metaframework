@@ -1,6 +1,6 @@
-CREATE DATABASE `{ENV.DATABASE_NAME}` CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_bin';
+CREATE DATABASE `{{ ENV.DATABASE_NAME }}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
-USE `{ENV.DATABASE_NAME}`;
+USE `{{ ENV.DATABASE_NAME }}`;
 
 -- Authorization and Authentication
 
@@ -28,7 +28,7 @@ CREATE TABLE `UserGroupMemberships` (
     `user_id` CHAR(40),
     `user_group_id` CHAR(40),
     `access_granted` DATETIME NOT NULL,
-    `access_exipry` DATETIME NOT NULL,
+    `access_expiry` DATETIME NOT NULL,
     `has_access` BOOLEAN NOT NULL DEFAULT 0,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -68,7 +68,8 @@ CREATE TABLE `PermissionSetPermissions` (
     `permission_set_id` CHAR(40) NOT NULL,
     `permission_id` CHAR(40) NOT NULL,
     `notes` TEXT,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`permission_set_id`, `permission_id`),
+        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`permission_set_id`, `permission_id`),
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `FK1_permission`
     FOREIGN KEY (`permission_id`) REFERENCES `Permissions`(`permission_id`),
@@ -81,7 +82,7 @@ CREATE TABLE `PermissionSetMembers` (
     `permission_set_id` CHAR(40) NOT NULL,
     `user_id` CHAR(40) NOT NULL,
     `access_granted` DATETIME NOT NULL,
-    `access_exipry` DATETIME NOT NULL,
+    `access_expiry` DATETIME NOT NULL,
     `has_access` BOOLEAN NOT NULL DEFAULT 0,
     `notes` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -98,7 +99,7 @@ CREATE TABLE `PermissionSetGroupMembers` (
     `user_group_id` CHAR(40) NOT NULL,
     `permission_set_id` CHAR(40) NOT NULL,
     `access_granted` DATETIME NOT NULL,
-    `access_exipry` DATETIME NOT NULL,
+    `access_expiry` DATETIME NOT NULL,
     `has_access` BOOLEAN NOT NULL DEFAULT 0,
     `notes` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

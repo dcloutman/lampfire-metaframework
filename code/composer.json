@@ -3,12 +3,13 @@
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Lampfire\\App\\": "src/"
+            "App\\": "src/",
+            "Cli\\": "cli/",
+            "Lampfire\\": "framework/"
         }
     },
     "require": {
         "ext-json": "*",
-        "atlas/orm": "^3.1",
         "monolog/monolog": "^2.9",
         "php-di/php-di": "^6.4",
         "slim/psr7": "^1.6",
@@ -30,11 +31,6 @@
         },
         "process-timeout": 0,
         "sort-packages": true
-    },
-    "autoload": {
-        "psr-4": {
-            "App\\": "src/"
-        }
     },
     "autoload-dev": {
         "psr-4": {

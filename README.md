@@ -1,4 +1,4 @@
-# Slim + Twig + Atlas project skeleton.
+# Slim + Twig project skeleton.
 This repository contains a simple project skeleton for PHP applications that provides robust security and little else.
 
 ## Configurations
@@ -6,3 +6,6 @@ You should create a file at the project root called `.config` and create a file 
 
 ## Migrations
 Migrations are done through SQL. The framework supports reverse-engineering of the application database.
+
+## LLM Instructions
+[AGENTS.md](AGENTS.md)

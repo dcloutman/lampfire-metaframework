@@ -1,14 +1,26 @@
 # LLM Guidelines
 Project establishes a forkable starting point for a PHP application with an restful API and administrative panel that can manage the application's authentication and authorization features.
 
+## Documentation
+- Must write DOCUMENTATION
+- All comments must be in clear, comprehensible English.
+- English statements MUST include a subject and a verb, and optionally direct or indirect objects. 
+- Must use correct punctuation and capitalization.
+- No comments without initial capitalization or terminating punctuation.
+- Avoid parenthetical statements in comments.
+
 ## Tech Stack
 The project uses:
-- Slim framework for the controller layer
-- Atlas ORM (https://atlasphp.io/) for persistence layer access
+- PHP 8.4 or greater
+- Slim framework web controllers
 - Twig for templating
+- MySQL accessed via PDO
+- PHPUnit for unit testing
+- A custom gateway layer for data access
+- An internal serices layer for encapsulating business logic around data entities
 
 ## Project Goals
-The project will create a classic administrative panel that consumes the restful API and uses Twig to assist in creating reusable components. The administrative panel must:
+The project must have and administrative panel that consumes the restful API and uses Twig to assist in creating reusable components. The administrative panel must:
 - Create / update / delete user records
 - Manage password resets
 - Create permissions and their associated programatic tokens
@@ -17,8 +29,8 @@ The project will create a classic administrative panel that consumes the restful
 - Associate user groups with permission sets
 
 ## Code Rules
-- Code is a human interface for the use by humans. Code readability is critical. This code will be read and modified by humans. Don't be slopp
-- DOCUMENTATION IS *MANDATORY*. Write all comments in clear, comprehensible English. English statements must include a subject and a verb and optionally direct or indirect objects. Use correct punctuation and capitalization. Writing comments with no initial capitalization or terminating punctuation is annoying.
+- Code is a human interface for the use by humans. Code readability is critical. This code will be read and modified by humans.
+- Variable names must clearly identify the contents of the variable.
 - Make use of PHP Composer features, such as the autoloader and namespaces
 - Follow PSR-12 code formatting conventions
 - Always use 4 space indentation in PHP, JavaScript, JSX, TypeScript, CSS, SCSS, SQL and any other file containing code, unless it would cause the code to not parse
@@ -50,3 +62,8 @@ Security should be the primary focus of this project, followed by userland adapt
 - Avoid decorating the user interface with emojis. Layout should be professional and neutral with branding
 - We are design system neutral. Keep UI code minimalistic and adaptable to user requirements
 - Do not introduce external UI dependencies. Users will eventually choose to integrate their favorite tools
+
+## Additional Instructions
+- Gateway layer: [See gateway.instructions.md](./gateway.instructions.md)
+- Services layer: [See services.instructions.md](./services.instructions.md)
+- Controller layer: [See controller.instructions.md](./controller.instructions.md)
