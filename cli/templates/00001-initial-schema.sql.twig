@@ -8,11 +8,24 @@ USE `{{ ENV.DATABASE_NAME }}`;
 -- USE UUID() for user_id. Most ORMs still choke on `DEFAULT UUID()`
 CREATE TABLE `Users` (
     `user_id` CHAR(40) PRIMARY KEY NOT NULL,
-    `name` VARCHAR(1024),
     `username` VARCHAR(512) NOT NULL UNIQUE,
+    `password_hash` VARCHAR(255) NOT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) COMMENT="Associates a login name with an internal unique identifier.";
+
+-- This table should have a 1 to 1 relationship with `Users`. The goal is to separate authentication data from PII.
+CREATE TABLE `UserData` (
+    `user_id` CHAR(40) PRIMARY KEY NOT NULL,
+    `first_name` VARCHAR(1024),
+    `last_name` VARCHAR(1024),
+    `email_address` VARCHAR(1024) UNIQUE NOT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `FK1_user`
+        FOREIGN KEY (`user_id`)
+        REFERENCES `Users`(`user_id`)
+) COMMENT="Store user data in a separate table from login information. Contact information and such belongs here.";
 
 -- User Groups are collections of users that can be granted permissions.
 CREATE TABLE `UserGroups` (
@@ -33,7 +46,7 @@ CREATE TABLE `UserGroupMemberships` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`user_id`, `user_group_id`),
-    CONSTRAINT `FK1_user`
+    CONSTRAINT `FK2_user`
         FOREIGN KEY (`user_id`)
         REFERENCES `Users`(`user_id`),
     CONSTRAINT `FK1_user_group`
@@ -68,13 +81,13 @@ CREATE TABLE `PermissionSetPermissions` (
     `permission_set_id` CHAR(40) NOT NULL,
     `permission_id` CHAR(40) NOT NULL,
     `notes` TEXT,
-        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (`permission_set_id`, `permission_id`),
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT `FK1_permission`
-    FOREIGN KEY (`permission_id`) REFERENCES `Permissions`(`permission_id`),
-  CONSTRAINT `FK3_permission_set`
-    FOREIGN KEY (`permission_set_id`) REFERENCES `PermissionSets`(`permission_set_id`)
+    PRIMARY KEY (`permission_set_id`, `permission_id`),
+    CONSTRAINT `FK1_permission`
+        FOREIGN KEY (`permission_id`) REFERENCES `Permissions`(`permission_id`),
+    CONSTRAINT `FK3_permission_set`
+        FOREIGN KEY (`permission_set_id`) REFERENCES `PermissionSets`(`permission_set_id`)
 ) COMMENT="Associates individual permissions with permission sets.";
 
 -- Associates individual users with permission sets.
@@ -88,7 +101,7 @@ CREATE TABLE `PermissionSetMembers` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`permission_set_id`, `user_id`),
-        CONSTRAINT `FK2_user`
+        CONSTRAINT `FK3_user`
         FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`),
     CONSTRAINT `FK1_permission_set`
         FOREIGN KEY (`permission_set_id`) REFERENCES `PermissionSets`(`permission_set_id`)

@@ -1,0 +1,8 @@
+.git
+.vscode
+.config
+*.md
+llm-notes.txt
+code/vendor
+cli/vendor
+cli/templates_compiled

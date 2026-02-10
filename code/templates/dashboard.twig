@@ -1,0 +1,30 @@
+{# Authenticated user dashboard. Available to all signed-in users. #}
+{% extends "_base.twig" %}
+
+{% block title %}{{ pageTitle | default('Dashboard') }}{% endblock %}
+
+{% block content %}
+<div class="user-dashboard">
+    <header class="user-dashboard-header">
+        <div class="user-dashboard-brand">
+            <a href="/dashboard" class="user-dashboard-brand-link">Lampfire</a>
+        </div>
+        <nav class="user-dashboard-nav">
+            <span class="user-dashboard-greeting">{{ username }}</span>
+            <a href="/admin/dashboard" class="btn btn-secondary btn-small">Admin Panel</a>
+            <a href="/admin/logout" class="btn btn-secondary btn-small">Log Out</a>
+        </nav>
+    </header>
+
+    <main class="user-dashboard-content">
+        <h1>Dashboard</h1>
+        <section class="dashboard-welcome">
+            <p>Welcome, <strong>{{ username }}</strong>.</p>
+        </section>
+    </main>
+
+    <footer class="homepage-footer">
+        <p>&copy; {{ "now" | date("Y") }} Lampfire</p>
+    </footer>
+</div>
+{% endblock %}

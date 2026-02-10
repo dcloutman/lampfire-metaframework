@@ -1,20 +1,17 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        {% block meta %$}
-            <title>I need a title!</title>
+        {% block meta %}
+            <title>{% block title %}Application{% endblock %}</title>
         {% endblock %}
-        {% block stylesheet %}<link rel="stylesheet" href="./css/main.css" />{% endblock %}
+        {% block stylesheet %}<link rel="stylesheet" href="/css/main.css" />{% endblock %}
     </head>
     <body>
         {% block content %}
         <main>
-             <h1>I need some content</h1>
+             <h1>Application</h1>
         </main>
         {% endblock %}
     </body>
-    {% block endscripts %}
-        <script language="javascript">
-        </script>
-    {% endblock %}
+    {% block scripts %}{% endblock %}
 </html>

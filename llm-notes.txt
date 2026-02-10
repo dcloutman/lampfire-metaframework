@@ -1,0 +1,20 @@
+Initial prompts:
+
+```
+I have this basic skeleton for a PHP web application framework laid out. I want to generate PHP code that creates an administrative interface that can manage the application's users. Important:
+* JWTs are banned. Use Paseto tokens for auth.
+* Argon2 for password hashing
+* Build the admin interface using a classical web application pattern. No SPAs, and no React  at this time.
+* SCSS is preferred over raw CSS. Make the colors and fonts easy to modify
+* Clean design, no emojis. I hate emojis
+* Clear English comments and instructions. Complete sentences with correct punctuation.
+* No front-end frameworks. Avoid utility classes. No Bootstrap, Tailwind, or JQuery
+* TypeScript over JavaScript. 
+* Typed code over untyped code.
+* The PHP `empty()` function is banned
+* Avoid truthy tests. Be explicit when doing type detection.
+* Don't use lengthy ternary statments. Make the meaining of code obvious to a human reader.
+* Follow the database design as your starting point and build relevant services, gateways, and RESTful controllers.
+```
+
+Used Claude Opus 4.6

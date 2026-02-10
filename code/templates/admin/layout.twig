@@ -1,0 +1,48 @@
+{# Admin layout with sidebar navigation. Extends the application base. #}
+{% extends "_base.twig" %}
+
+{% block title %}{{ pageTitle | default('Admin') }} - Admin Panel{% endblock %}
+
+{% block stylesheet %}
+    <link rel="stylesheet" href="/css/main.css" />
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper">
+    <nav class="admin-sidebar">
+        <div class="sidebar-header">
+            <a href="/admin/dashboard" class="sidebar-brand">Admin Panel</a>
+        </div>
+        <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+                <a href="/admin/dashboard" class="sidebar-nav-link">Dashboard</a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="/admin/users" class="sidebar-nav-link">Users</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="sidebar-nav-link sidebar-logout">Log Out</a>
+        </div>
+    </nav>
+    <main class="admin-content">
+        {% if error is defined and error is not null %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if success is defined and success is not null %}
+        <div class="alert alert-success">
+            {{ success }}
+        </div>
+        {% endif %}
+
+        {% block admin_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="/js/admin.js"></script>
+{% endblock %}

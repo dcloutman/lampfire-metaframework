@@ -1,0 +1,52 @@
+# Docker Development Environment
+#
+# Provides a PHP 8.4 / Apache container and a MariaDB container.
+# Copy env_example to .env and fill in your values before running.
+#
+# Start:   docker-compose up -d
+# Stop:    docker-compose down
+# Rebuild: docker-compose up -d --build
+# Logs:    docker-compose logs -f
+
+version: '2.4'
+
+services:
+    web:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        container_name: lampfire-web
+        ports:
+            - "8080:80"
+        volumes:
+            - ./code:/var/www/app/code
+            - ./framework:/var/www/app/framework
+            - ./cli:/var/www/app/cli
+            - ./cli.php:/var/www/app/cli.php
+            - ./.config:/var/www/app/.config
+        env_file:
+            - .config/.env
+        depends_on:
+            db:
+                condition: service_healthy
+        restart: unless-stopped
+
+    db:
+        image: mariadb:11
+        container_name: lampfire-db
+        ports:
+            - "3306:3306"
+        env_file:
+            - .config/.env
+        volumes:
+            - db_data:/var/lib/mysql
+            - ./code/migrations:/docker-entrypoint-initdb.d
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        restart: unless-stopped
+
+volumes:
+    db_data:
