@@ -78,10 +78,23 @@ class ContainerConfig
 
             // The Twig renderer uses compiled-template caching.
             Twig::class => function (AppSettings $app): Twig {
-                return Twig::create($app->getTemplatePath(), [
+                $twig = Twig::create($app->getTemplatePath(), [
                     'cache'       => $app->getTemplateCachePath(),
                     'auto_reload' => true,
                 ]);
+
+                $projectName = trim($app->getProjectName());
+                $organizationName = trim($app->getOrganizationName());
+                $twig->getEnvironment()->addGlobal(
+                    'projectName',
+                    $projectName !== '' ? $projectName : 'Application'
+                );
+                $twig->getEnvironment()->addGlobal(
+                    'organizationName',
+                    $organizationName !== '' ? $organizationName : 'Organization'
+                );
+
+                return $twig;
             },
         ];
     }

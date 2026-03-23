@@ -1,0 +1,83 @@
+{# Init script uses this template to generate an initial `framework/Config/ApplicationInstanceConfigurations.php` file. #}
+
+<?php
+
+/**
+ * There are some application setting that should be set when the application is initialized that shouldn't change over 
+ * the lifetime of the application. They are set here instead of in the .env file because they should not mutate over the
+ * application's lifetime.
+ * 
+ * This class is a singleton. Configurations should
+ * 
+ */
+class ApplicationInstanceConfigurations {
+    /**
+     * This value is generated during the application's initialization. It is assigned by MySQL.
+     */
+    private const ADMINISTRATORS_GROUP_ID = '{{ administrators_group_id }}';
+    private const ADMINISTRATORS_PRIVILEGE_SET_ID = '{{ administrators_privilege_set_id }}';
+
+    private static $instance;
+    private $configurations = [];
+
+    /**
+     * Private constructor to prevent direct instantiation. Initializes the configurations.
+     * 
+     * @param array $configurations An associative array of configuration key/value pairs.
+     */
+    private function __construct(array $configurations = []) {
+        self::$instance = new self();
+
+        foreach ($configurations as $key => $value) {
+            $this->addConfiguration($key, $value);
+        }
+
+        static::addConfiguration('administrators_group_id', self::ADMINISTRATORS_GROUP_ID);
+        static::addConfiguration('administrators_privilege_set_id', self::ADMINISTRATORS_PRIVILEGE_SET_ID);
+    }
+
+    /**
+     * Adds a configuration key/value pair to the application instance configurations. This method is
+     * intentionally private to prevent mutation after initialization. It should only be called by the
+     * constructor.
+     * 
+     * @param string $key The configuration key.
+     * @param mixed $value The configuration value.
+     * 
+     * @throws Exception If the key contains leading or trailing whitespace, or if the key already exists.
+     */
+    private function addConfiguration(string $key, $value): void {
+        if (trim($key) !== $key) {
+            throw new Exception("Configuration key cannot contain leading or trailing whitespace.");
+        }
+
+        if (array_key_exists($key, $this->configurations)) {
+            throw new Exception("Configuration with key '$key' already exists.");
+        }
+
+        if (is_string($key) && strlen($key) > 0 && $value !== null) {
+            $this->configurations[$key] = $value;
+        }
+    }
+
+    public function getConfiguration(string $key) {
+        if (array_key_exists($key, $this->configurations)) {
+            return $this->configurations[$key];
+        }
+        return null;
+    }
+
+    /**
+     * Gets the singleton instance of ApplicationInstanceConfigurations.
+     * 
+     * @return ApplicationInstanceConfigurations The singleton instance.
+     */
+    public static function getInstance(): self {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+}
+

@@ -20,12 +20,12 @@ abstract class AbstractRestController extends AbstractController
      * Writes a JSON payload to the response body and sets the correct
      * content type header.
      *
-     * @param Response             $response   The outgoing response.
+     * @param Response $response   The outgoing response.
      * @param array<string, mixed> $data       The data to encode.
-     * @param int                  $statusCode The HTTP status code.
+     * @param int $statusCode The HTTP status code.
      * @return Response The JSON response.
      */
-    protected function jsonResponse(Response $response, array $data, int $statusCode = 200): Response
+    protected function prepareJsonResponse(Response $response, array $data, int $statusCode = 200): Response
     {
         $response->getBody()->write(json_encode($data, JSON_THROW_ON_ERROR));
 
@@ -38,14 +38,14 @@ abstract class AbstractRestController extends AbstractController
      * Writes a standard JSON error response.
      *
      * @param Response $response   The outgoing response.
-     * @param int      $statusCode The HTTP status code.
-     * @param string   $error      A short error label.
-     * @param string   $message    A human-readable error description.
+     * @param int $statusCode The HTTP status code.
+     * @param string $error A short error label.
+     * @param string $message A human-readable error description.
      * @return Response The JSON error response.
      */
-    protected function jsonError(Response $response, int $statusCode, string $error, string $message): Response
+    protected function prepareJsonErrorResponse(Response $response, int $statusCode, string $error, string $message): Response
     {
-        return $this->jsonResponse($response, [
+        return $this->prepareJsonResponse($response, [
             'error'   => $error,
             'message' => $message,
         ], $statusCode);
@@ -61,7 +61,7 @@ abstract class AbstractRestController extends AbstractController
      * @param string                    $fieldName The field to extract.
      * @return string|null The trimmed string value or null.
      */
-    protected function extractString(?array $body, string $fieldName): ?string
+    protected function extractRequiredStringFromBodyData(?array $body, string $fieldName): ?string
     {
         if ($body === null) {
             return null;
@@ -89,9 +89,9 @@ abstract class AbstractRestController extends AbstractController
      * @param string                    $fieldName The field to extract.
      * @return string|null The trimmed value or null.
      */
-    protected function extractOptionalString(?array $body, string $fieldName): ?string
+    protected function extractOptionalStringFromBodyData(?array $body, string $fieldName): ?string
     {
-        $value = $this->extractString($body, $fieldName);
+        $value = $this->extractRequiredStringFromBodyData($body, $fieldName);
 
         if ($value === null || $value === '') {
             return null;

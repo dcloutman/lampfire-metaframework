@@ -33,7 +33,7 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
     }
 
     /**
-     * Returns the unqualified database table name for this gateway.
+     * Returns the database table name for this gateway.
      *
      * @return string The table name.
      */
@@ -43,34 +43,29 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
      * Returns the column names that form the primary key.
      *
      * Tables with a single-column key return a one-element array.
-     * Junction tables with composite keys return two or more elements.
+     * Tables with composite keys return two or more elements.
      *
-     * @return array<int, string> The ordered list of primary key columns.
+     * @return array<int, string> The list of primary key columns.
      */
     abstract protected function getPrimaryKeyColumns(): array;
 
-    // ------------------------------------------------------------------
-    //  Primary-key helpers
-    // ------------------------------------------------------------------
-
     /**
-     * Validates that every declared primary key column is present in the
-     * given associative array and that each value is a valid UUID.
+     * Validates that the primary key names provided match those declared by the gateway.
      *
-     * @param array<string, string> $keyValues Column-name-to-value pairs.
+     * @param array<string, string> $primaryKeysToValues Column-name-to-value pairs.
      * @return void
      * @throws \InvalidArgumentException When a required column is missing
-     *                                   or a value is not a valid UUID.
      */
-    protected function validatePrimaryKeyValues(array $keyValues): void
+    protected function validatePrimaryKeyValues(array $primaryKeysToValues): void
     {
-        foreach ($this->getPrimaryKeyColumns() as $column) {
-            if (array_key_exists($column, $keyValues) === false) {
-                throw new \InvalidArgumentException(
-                    sprintf('Missing primary key column: %s.', $column)
-                );
-            }
-            $this->requireValidUuid($keyValues[$column], $column);
+        $primaryKeyNames = $this->getPrimaryKeyColumns();
+        if (
+            count($primaryKeyNames) !== count($primaryKeysToValues) ||
+            sort($primaryKeyNames) !== sort(array_keys($primaryKeysToValues))
+        ) {
+            throw new \RuntimeException(
+                'Provided primary key colums do not match the gateway\'s primary key columns.'
+            );
         }
     }
 
@@ -80,8 +75,8 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
      *
      * Example return for a composite key (`user_id`, `user_group_id`):
      *   [
-     *     'user_id = :pk_user_id AND user_group_id = :pk_user_group_id',
-     *     ['pk_user_id' => '...', 'pk_user_group_id' => '...']
+     *     'user_id = :user_id AND user_group_id = :user_group_id',
+     *     ['user_id' => '...', 'user_group_id' => '...']
      *   ]
      *
      * @param array<string, string> $keyValues Column-name-to-value pairs.
@@ -96,17 +91,12 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
         $params  = [];
 
         foreach ($this->getPrimaryKeyColumns() as $column) {
-            $placeholder          = 'pk_' . $column;
-            $clauses[]            = sprintf('%s = :%s', $column, $placeholder);
-            $params[$placeholder] = $keyValues[$column];
+            $clauses[]       = sprintf('%s = :%s', $column, $column);
+            $params[$column] = $keyValues[$column];
         }
 
         return [implode(' AND ', $clauses), $params];
     }
-
-    // ------------------------------------------------------------------
-    //  Query helpers
-    // ------------------------------------------------------------------
 
     /**
      * Fetches a single row by its full primary key.
@@ -134,7 +124,14 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
         );
 
         $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare SQL statement.');
+        }
+
+        $success = $statement->execute($params);
+        if ($success === false) {
+            return null;
+        }
 
         $row = $statement->fetch();
 
@@ -142,12 +139,28 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
     }
 
     /**
+     * Validates that a string is a valid UUID.
+     *
+     * @param string $uuid The UUID string to validate.
+     * @return void
+     * @throws \InvalidArgumentException When the value is not a valid UUID.
+     */
+    protected function requireValidUuid(string $uuid): void
+    {
+        if (!preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/', $uuid)) {
+            throw new \InvalidArgumentException(
+                sprintf('The value is not a valid UUID: "%s".', $uuid)
+            );
+        }
+    }
+
+    /**
      * Deletes a single row by its full primary key.
      *
      * @param array<string, string> $keyValues Column-name-to-value pairs.
      * @return bool True when a row was deleted.
-     * @throws \InvalidArgumentException When a key column is missing or
-     *                                   a value is not a valid UUID.
+     * @throws \InvalidArgumentException When a key column is missing or a value is not a valid UUID.
+     * @throws \RuntimeException When the SQL statement fails to prepare or execute.
      */
     protected function deleteByPrimaryKey(array $keyValues): bool
     {
@@ -160,54 +173,15 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
         );
 
         $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-
-        return $statement->rowCount() > 0;
-    }
-
-    /**
-     * Checks whether a value already exists in a column.
-     *
-     * Optionally excludes a single row by primary key so that update
-     * uniqueness checks do not flag the record being edited. The
-     * exclusion key may be a composite key.
-     *
-     * @param string                     $column          The column to check.
-     * @param string                     $value           The value to look for.
-     * @param array<string, string>|null $excludeKeyValues An optional primary
-     *                                                     key to exclude.
-     * @return bool True when the value exists.
-     * @throws \InvalidArgumentException When exclude key columns are
-     *                                   missing or values are not valid UUIDs.
-     */
-    protected function valueExists(
-        string $column,
-        string $value,
-        ?array $excludeKeyValues = null
-    ): bool {
-        if (is_array($excludeKeyValues) && count($excludeKeyValues) > 0) {
-            [$excludeWhere, $excludeParams] = $this->buildPrimaryKeyWhere($excludeKeyValues);
-
-            $sql = sprintf(
-                'SELECT COUNT(*) FROM %s WHERE %s = :value AND NOT (%s)',
-                $this->getTableName(),
-                $column,
-                $excludeWhere
-            );
-
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute(array_merge(['value' => $value], $excludeParams));
-        } else {
-            $sql = sprintf(
-                'SELECT COUNT(*) FROM %s WHERE %s = :value',
-                $this->getTableName(),
-                $column
-            );
-
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute(['value' => $value]);
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare SQL statement.');
+        }
+        
+        $success = $statement->execute($params);
+        if ($success === false) {
+            throw new \RuntimeException('Failed to execute SQL statement.');
         }
 
-        return (int) $statement->fetchColumn() > 0;
+        return $statement->rowCount() > 0;
     }
 }

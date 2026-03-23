@@ -23,12 +23,11 @@ class SecuritySettings extends AbstractSettings
      */
     public function __construct()
     {
-        $this->pasetoKeyHex = $this->requireString('PASETO_KEY');
+        $this->pasetoKeyHex = $this->getRequiredEnvironmentString('PASETO_KEY');
 
         if (!ctype_xdigit($this->pasetoKeyHex) || strlen($this->pasetoKeyHex) !== 64) {
             throw new \RuntimeException(
-                'PASETO_KEY must be a 64-character hexadecimal string (256 bits). '
-                . 'Generate with: php -r "echo bin2hex(random_bytes(32));"'
+                'PASETO_KEY must be a 64-character hexadecimal string (256 bits).  Generate with: php -r "echo bin2hex(random_bytes(32));"'
             );
         }
     }

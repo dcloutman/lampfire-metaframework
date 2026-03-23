@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Lampfire\Database;
 
-use Lampfire\Config\Database as DatabaseConfig;
+use Lampfire\Config\DatabaseConfig;
 use PDO;
 use PDOException;
 

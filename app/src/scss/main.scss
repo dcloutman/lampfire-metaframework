@@ -1,0 +1,388 @@
+// Main stylesheet entry point.
+// Compiles to /css/main.css.
+
+@use "variables" as *;
+
+// Reset.
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: $font-family-base;
+    font-size: $font-size-base;
+    line-height: $line-height-base;
+    color: $color-text;
+    background-color: $color-bg;
+}
+
+a {
+    color: $color-primary;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+h1 {
+    font-size: $font-size-h1;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: $font-size-h2;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: $spacing-md;
+}
+
+
+// Login page.
+
+.login-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.login-card {
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    padding: $spacing-xl;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-title {
+    text-align: center;
+    margin-bottom: $spacing-lg;
+}
+
+
+// Admin layout.
+
+.admin-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.admin-sidebar {
+    width: $sidebar-width;
+    background: $color-sidebar;
+    color: $color-sidebar-text;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: $spacing-lg $spacing-md;
+    border-bottom: 1px solid $color-sidebar-hover;
+}
+
+.sidebar-brand {
+    color: $color-sidebar-text;
+    font-weight: 700;
+    font-size: $font-size-h2;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: none;
+    }
+}
+
+.sidebar-nav {
+    list-style: none;
+    padding: $spacing-sm 0;
+    flex: 1;
+}
+
+.sidebar-nav-item {
+    margin: 0;
+}
+
+.sidebar-nav-link {
+    display: block;
+    padding: $spacing-sm $spacing-md;
+    color: $color-sidebar-text;
+    text-decoration: none;
+
+    &:hover {
+        background: $color-sidebar-hover;
+        text-decoration: none;
+    }
+}
+
+.sidebar-footer {
+    padding: $spacing-sm 0;
+    border-top: 1px solid $color-sidebar-hover;
+}
+
+.sidebar-logout {
+    color: $color-sidebar-text;
+    opacity: 0.7;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.admin-content {
+    flex: 1;
+    padding: $spacing-xl;
+    overflow-x: auto;
+}
+
+
+// Alerts.
+
+.alert {
+    padding: $spacing-sm $spacing-md;
+    border-radius: $border-radius;
+    margin-bottom: $spacing-lg;
+    font-size: $font-size-small;
+}
+
+.alert-error {
+    background: $color-alert-error-bg;
+    color: $color-alert-error-fg;
+    border: 1px solid $color-alert-error-fg;
+}
+
+.alert-success {
+    background: $color-alert-success-bg;
+    color: $color-alert-success-fg;
+    border: 1px solid $color-alert-success-fg;
+}
+
+
+// Page header.
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-lg;
+    gap: $spacing-md;
+}
+
+.page-header-actions {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+}
+
+
+// Forms.
+
+.form-group {
+    margin-bottom: $spacing-md;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: $spacing-xs;
+    font-weight: 500;
+    font-size: $font-size-small;
+    color: $color-text;
+}
+
+.form-input {
+    display: block;
+    width: 100%;
+    height: $input-height;
+    padding: $spacing-sm;
+    font-family: $font-family-base;
+    font-size: $font-size-base;
+    color: $color-text;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+
+    &:focus {
+        outline: none;
+        border-color: $color-primary;
+        box-shadow: 0 0 0 2px rgba($color-primary, 0.15);
+    }
+}
+
+.form-actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+}
+
+.admin-form {
+    max-width: 480px;
+}
+
+.login-form {
+    .form-group {
+        margin-bottom: $spacing-md;
+    }
+}
+
+
+// Buttons.
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: $input-height;
+    padding: $spacing-sm $spacing-md;
+    font-family: $font-family-base;
+    font-size: $font-size-small;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: $border-radius;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1;
+
+    &:hover {
+        text-decoration: none;
+    }
+}
+
+.btn-primary {
+    background: $color-primary;
+    color: #fff;
+
+    &:hover {
+        background: $color-primary-hover;
+    }
+}
+
+.btn-secondary {
+    background: $color-surface;
+    color: $color-secondary;
+    border-color: $color-border;
+
+    &:hover {
+        background: $color-bg;
+        color: $color-secondary-hover;
+    }
+}
+
+.btn-danger {
+    background: $color-danger;
+    color: #fff;
+
+    &:hover {
+        background: $color-danger-hover;
+    }
+}
+
+.btn-small {
+    height: auto;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-small;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+
+// Data table.
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    font-size: $font-size-small;
+
+    th,
+    td {
+        padding: $spacing-sm $spacing-md;
+        text-align: left;
+        border-bottom: 1px solid $color-border;
+    }
+
+    th {
+        font-weight: 600;
+        color: $color-text-muted;
+        background: $color-bg;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+}
+
+.table-actions {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: center;
+}
+
+.inline-form {
+    display: inline;
+}
+
+
+// Detail views.
+
+.detail-section {
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-lg;
+}
+
+.detail-list {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: $spacing-sm $spacing-md;
+
+    dt {
+        font-weight: 600;
+        color: $color-text-muted;
+        font-size: $font-size-small;
+    }
+
+    dd {
+        font-family: $font-family-mono;
+        font-size: $font-size-small;
+        word-break: break-all;
+    }
+}
+
+
+// Miscellaneous.
+
+.empty-state {
+    color: $color-text-muted;
+    padding: $spacing-xl 0;
+    text-align: center;
+}
+
+.back-link {
+    margin-top: $spacing-md;
+    font-size: $font-size-small;
+}
+
+.dashboard-welcome {
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    padding: $spacing-lg;
+}

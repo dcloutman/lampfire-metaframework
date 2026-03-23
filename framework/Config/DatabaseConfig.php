@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace Lampfire\Config;
 
-class Database extends AbstractSettings
+class DatabaseConfig extends AbstractSettings
 {
     private string $host;
     private int $port;
@@ -30,11 +30,11 @@ class Database extends AbstractSettings
      */
     public function __construct()
     {
-        $this->host     = $this->requireString('DATABASE_HOST');
-        $this->port     = $this->optionalInt('DATABASE_PORT', 3306);
-        $this->name     = $this->requireString('DATABASE_NAME');
-        $this->user     = $this->requireString('DATABASE_APPLICATION_USER');
-        $this->password = $this->requireString('DATABASE_APPLICATION_USER_PASSWORD');
+        $this->host     = $this->getRequiredEnvironmentString('DATABASE_HOST');
+        $this->port     = $this->getOptionalEnvironmentInt('DATABASE_PORT', 3306);
+        $this->name     = $this->getRequiredEnvironmentString('DATABASE_NAME');
+        $this->user     = $this->getRequiredEnvironmentString('DATABASE_APPLICATION_USER');
+        $this->password = $this->getRequiredEnvironmentString('DATABASE_APPLICATION_USER_PASSWORD');
     }
 
     /**

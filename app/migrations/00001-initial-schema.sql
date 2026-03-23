@@ -1,6 +1,4 @@
-CREATE DATABASE `{{ ENV.DATABASE_NAME }}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
-
-USE `{{ ENV.DATABASE_NAME }}`;
+USE `lampfire_auth`;
 
 -- Authorization and Authentication
 
@@ -10,6 +8,7 @@ CREATE TABLE `Users` (
     `user_id` CHAR(40) PRIMARY KEY NOT NULL,
     `username` VARCHAR(512) NOT NULL UNIQUE,
     `password_hash` VARCHAR(255) NOT NULL,
+    `enabled` BOOLEAN NOT NULL DEFAULT 1,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) COMMENT="Associates a login name with an internal unique identifier.";
@@ -31,6 +30,7 @@ CREATE TABLE `UserData` (
 CREATE TABLE `UserGroups` (
     `user_group_id` CHAR(40) PRIMARY KEY NOT NULL,
     `group_name` VARCHAR(256),
+    `enabled` BOOLEAN NOT NULL DEFAULT 1,
     `description` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -64,7 +64,7 @@ CREATE TABLE `Permissions` (
     `notes` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) COMMENT="A permission is a token (e.g. a string) that can be used programmatically to limit or constrain an application's behavior based on a user's association or non-association.";
+) COMMENT="A permission granular permission. The permission_token is a string that can be used programmatically to limit or constrain an application's behavior based on a user's association or non-association.";
 
 -- Permission Sets group permissions together for easier assignment when permissions are frequently granted together.
 CREATE TABLE `PermissionSets` (
@@ -108,7 +108,7 @@ CREATE TABLE `PermissionSetMembers` (
 ) COMMENT="Associates individual users with permission sets.";
 
 
-CREATE TABLE `PermissionSetGroupMembers` (
+CREATE TABLE `PermissionSetUserGroups` (
     `user_group_id` CHAR(40) NOT NULL,
     `permission_set_id` CHAR(40) NOT NULL,
     `access_granted` DATETIME NOT NULL,

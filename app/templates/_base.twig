@@ -1,0 +1,17 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        {% block meta %}
+            <title>{% block title %}{{ projectName }}{% endblock %}</title>
+        {% endblock %}
+        {% block stylesheet %}<link rel="stylesheet" href="/css/main.css" />{% endblock %}
+    </head>
+    <body>
+        {% block content %}
+        <main>
+             <h1>{{ projectName }}</h1>
+        </main>
+        {% endblock %}
+    </body>
+    {% block scripts %}{% endblock %}
+</html>

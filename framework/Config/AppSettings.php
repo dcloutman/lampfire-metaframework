@@ -5,10 +5,10 @@ declare(strict_types=1);
 /**
  * General application configuration.
  *
- * Provides debug flags, conventional filesystem paths, and the
- * public application URL. Path getters derive their values from
- * the project root supplied at construction time; they follow
- * framework conventions and do not require environment variables.
+ * Provides debug flags, conventional filesystem paths, and the public application URL.
+ * The URL is composed at runtime from APP_DOMAIN, APP_PORT, and USE_HTTPS rather than
+ * stored as a single opaque string, so each component can vary independently per environment.
+ * Path getters derive their values from the project root supplied at construction time.
  */
 
 namespace Lampfire\Config;
@@ -17,7 +17,11 @@ class AppSettings extends AbstractSettings
 {
     private string $projectRoot;
     private bool $debug;
-    private string $applicationUrl;
+    private string $projectName;
+    private string $organizationName;
+    private string $appDomain;
+    private int $appPort;
+    private bool $useHttps;
 
     /**
      * Reads application configuration from the environment.
@@ -27,9 +31,13 @@ class AppSettings extends AbstractSettings
      */
     public function __construct(string $projectRoot)
     {
-        $this->projectRoot    = rtrim($projectRoot, '/');
-        $this->debug          = $this->optionalBool('APP_DEBUG', false);
-        $this->applicationUrl = $this->optionalString('APPLICATION_URL');
+        $this->projectRoot = rtrim($projectRoot, '/');
+        $this->debug       = $this->getOptionalEnvironmentBool('APP_DEBUG', false);
+        $this->projectName = $this->getOptionalEnvironmentString('PROJECT_NAME');
+        $this->organizationName = $this->getOptionalEnvironmentString('ORGANIZATION_NAME', 'Organization');
+        $this->appDomain   = $this->getOptionalEnvironmentString('APP_DOMAIN');
+        $this->appPort     = (int) $this->getOptionalEnvironmentString('APP_PORT', '80');
+        $this->useHttps    = $this->getOptionalEnvironmentBool('USE_HTTPS', false);
     }
 
     /**
@@ -49,11 +57,59 @@ class AppSettings extends AbstractSettings
     }
 
     /**
-     * Returns the public URL of the application.
+     * Returns the human-readable project name.
+     */
+    public function getProjectName(): string
+    {
+        return $this->projectName;
+    }
+
+    /**
+     * Returns the human-readable organization name.
+     */
+    public function getOrganizationName(): string
+    {
+        return $this->organizationName;
+    }
+
+    /**
+     * Returns the public domain name of the application, without a scheme or port.
+     */
+    public function getAppDomain(): string
+    {
+        return $this->appDomain;
+    }
+
+    /**
+     * Returns the port the application listens on.
+     */
+    public function getAppPort(): int
+    {
+        return $this->appPort;
+    }
+
+    /**
+     * Returns whether the application is served over HTTPS.
+     */
+    public function usesHttps(): bool
+    {
+        return $this->useHttps;
+    }
+
+    /**
+     * Returns the full public URL of the application, composed from APP_DOMAIN, APP_PORT,
+     * and USE_HTTPS. The port is omitted when it matches the default for the scheme.
      */
     public function getApplicationUrl(): string
     {
-        return $this->applicationUrl;
+        $scheme     = $this->useHttps ? 'https' : 'http';
+        $defaultPort = $this->useHttps ? 443 : 80;
+
+        if ($this->appPort === $defaultPort || $this->appPort === 0) {
+            return sprintf('%s://%s', $scheme, $this->appDomain);
+        }
+
+        return sprintf('%s://%s:%d', $scheme, $this->appDomain, $this->appPort);
     }
 
     /**

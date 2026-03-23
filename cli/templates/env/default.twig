@@ -1,0 +1,65 @@
+{# This is the default .env template. `cli.php init` will populate it with values. #}
+# Many of the settings in this file are secrets and should not be shared. Configure these
+# values on a per-environment basis and do not commit them to version control. The .env file is included in
+# .gitignore by default to prevent accidental commits of secrets. If you need to share configuration values
+# with your team, consider using a secrets manager.
+
+PROJECT_NAME={{ PROJECT_NAME|raw }}
+ORGANIZATION_NAME={{ ORGANIZATION_NAME|raw }}
+COMPOSE_PROJECT_NAME={{ COMPOSE_PROJECT_NAME|raw }}
+
+## FAILSAFE CONFIGURATIONS
+# Set this to true to allow `php cli.php project-reset` to reset the framework, configurations,
+# database, and docker volumes. This is a destructive action and should be used with caution. If
+# not set, Lampfire assumes a false value and will not allow the command to run.
+ALLOW_PROJECT_RESET={{ ALLOW_PROJECT_RESET|raw }}
+# Set this to true to allow `php cli.php init` to initialize the project. After the command has been
+# run once, this will be set to false to prevent accidental re-initialization and potential data loss.
+# If not set, Lampfire assumes a false value and will not allow the command to run.
+ALLOW_PROJECT_INIT={{ ALLOW_PROJECT_INIT|raw }}
+
+
+## DATABASE CONFIGURATION
+DATABASE_NAME={{ DATABASE_NAME|raw }}
+DATABASE_HOST={{ DATABASE_HOST|raw }}
+DATABASE_PORT={{ DATABASE_PORT|raw }}
+DATABASE_DBA_USER={{ DATABASE_DBA_USER|raw }}
+DATABASE_APPLICATION_USER={{ DATABASE_APPLICATION_USER|raw }}
+DATABASE_APPLICATION_USER_PASSWORD={{ DATABASE_APPLICATION_USER_PASSWORD|raw }}
+
+## DEBUG MODE
+# Debug mode displays detailed error messages in the browser. The application assumes a false value
+# for this setting if not set. It is recommended to set this to false in production environments.
+APP_DEBUG={{ APP_DEBUG|raw }}
+
+
+## SUPERADMIN CONFIGURATION
+# The superadmin is an ordinary user account that gains elevated privileges
+# by having their username match this value. The superadmin can add/remove
+# users from the admin group and modify the admin permission set.
+# Create the user account first, then set this to their username.
+# During oridinary operation, this should be left blank to prevent accidental privilege escalation.
+SUPERADMIN_USERNAME=
+
+## ADMIN USER GROUP CONFIGURATION
+# These identifiers are immutable through the API. The association between
+# the admin user group and admin permission set cannot be deleted or reassigned.
+ADMIN_USER_GROUP_NAME={{ ADMIN_USER_GROUP_NAME|raw }}
+
+## ADMIN PERMISSION CONFIGURATIONS
+ADMIN_PERMISSION_TOKEN_PREFIX={{ ADMIN_PERMISSION_TOKEN_PREFIX|raw }}
+# Admin Permission Set Configuration
+ADMIN_PERMISSION_SET_NAME={{ ADMIN_PERMISSION_SET_NAME|raw }}
+ADMIN_PERMISSION_SET_DESCRIPTION={{ ADMIN_PERMISSION_SET_DESCRIPTION|raw }}
+ADMIN_PERMISSION_SET_TOKEN_PREFIX={{ ADMIN_PERMISSION_SET_TOKEN_PREFIX|raw }}
+
+## APPLICATION CONFIGURATION
+APP_DOMAIN={{ APP_DOMAIN|raw }}
+APP_PORT={{ APP_PORT|raw }}
+USE_HTTPS={{ USE_HTTPS|raw }}
+
+## SECURITY CONFIGURATION (DO NOT SHARE)
+# 64-character hexadecimal key for PASETO v4.local tokens.
+# Generate with: php -r "echo bin2hex(random_bytes(32));"
+PASETO_KEY={{ PASETO_KEY|raw }}
+TOKEN_ISSUER={{ TOKEN_ISSUER|raw }}

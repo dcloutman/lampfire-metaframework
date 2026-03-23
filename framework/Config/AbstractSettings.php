@@ -26,7 +26,7 @@ class AbstractSettings
      * @return string The value.
      * @throws \RuntimeException When the variable is missing or empty.
      */
-    protected function requireString(string $key): string
+    protected function getRequiredEnvironmentString(string $key): string
     {
         $value = getenv($key);
 
@@ -46,7 +46,7 @@ class AbstractSettings
      * @param string $default The fallback value.
      * @return string The value or the default.
      */
-    protected function optionalString(string $key, string $default = ''): string
+    protected function getOptionalEnvironmentString(string $key, string $default = ''): string
     {
         $value = getenv($key);
 
@@ -64,9 +64,9 @@ class AbstractSettings
      * @return int The parsed integer.
      * @throws \RuntimeException When the variable is missing or not numeric.
      */
-    protected function requireInt(string $key): int
+    protected function getRequiredEnvironmentInt (string $key): int
     {
-        $value = $this->requireString($key);
+        $value = $this->getRequiredEnvironmentString($key);
 
         if (!ctype_digit($value) && !(str_starts_with($value, '-') && ctype_digit(substr($value, 1)))) {
             throw new \RuntimeException(
@@ -84,7 +84,7 @@ class AbstractSettings
      * @param int    $default The fallback value.
      * @return int The parsed integer or the default.
      */
-    protected function optionalInt(string $key, int $default = 0): int
+    protected function getOptionalEnvironmentInt (string $key, int $default = 0): int
     {
         $value = getenv($key);
 
@@ -111,9 +111,9 @@ class AbstractSettings
      * @return bool The parsed boolean.
      * @throws \RuntimeException When the variable is missing or not a recognized boolean string.
      */
-    protected function requireBool(string $key): bool
+    protected function getRequiredEnvironmentBool(string $key): bool
     {
-        $value = $this->requireString($key);
+        $value = $this->getRequiredEnvironmentString($key);
 
         return $this->parseBool($key, $value);
     }
@@ -125,7 +125,7 @@ class AbstractSettings
      * @param bool   $default The fallback value.
      * @return bool The parsed boolean or the default.
      */
-    protected function optionalBool(string $key, bool $default = false): bool
+    protected function getOptionalEnvironmentBool (string $key, bool $default = false): bool
     {
         $value = getenv($key);
 
@@ -158,9 +158,8 @@ class AbstractSettings
 
         throw new \RuntimeException(
             sprintf(
-                'Environment variable "%s" must be a boolean (true/false/1/0/yes/no/on/off), got "%s".',
-                $key,
-                $value
+                'Environment variable "%s" must be a boolean (true/false/1/0/yes/no/on/off).',
+                $key
             )
         );
     }

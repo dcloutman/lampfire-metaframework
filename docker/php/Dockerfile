@@ -27,7 +27,7 @@ RUN a2enmod rewrite headers
 COPY docker/php/vhost.conf /etc/apache2/sites-available/000-default.conf
 
 # Set the working directory.
-WORKDIR /var/www/app/code
+WORKDIR /var/www/app/app
 
 # Install Composer from the official image.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

@@ -1,0 +1,105 @@
+USE `{{ ENV.DATABASE_NAME }}`;
+
+START TRANSACTION;
+
+SET @now := UTC_TIMESTAMP();
+SET @access_expiry := DATE_ADD(@now, INTERVAL 100 YEAR);
+
+SET @admin_user_group_name := '{{ ENV.ADMIN_USER_GROUP_NAME }}';
+SET @admin_permission_set_name := '{{ ENV.ADMIN_PERMISSION_SET_NAME }}';
+SET @admin_permission_set_description := '{{ ENV.ADMIN_PERMISSION_SET_DESCRIPTION }}';
+SET @admin_permission_set_token := '{{ admin_permission_set_token }}';
+
+SET @administrators_user_group_id := UUID();
+INSERT INTO `UserGroups` (
+	`user_group_id`,
+	`group_name`,
+	`description`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_user_group_id,
+	@admin_user_group_name,
+	'System administrators with unrestricted access to management features.',
+	@now,
+	@now
+);
+
+
+SET @administrators_permission_set_id = UUID();
+INSERT INTO `PermissionSets` (
+	`permission_set_id`,
+	`permission_set_token`,
+	`title`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_permission_set_id,
+	@admin_permission_set_token,
+	@admin_permission_set_name,
+	@admin_permission_set_description,
+	@now,
+	@now
+);
+
+{# Add each permission and associate it with a permission set. #}
+{% for token, details in admin_tokens %}
+SET @permission_id = UUID();
+INSERT INTO `Permissions` (
+	`permission_id`,
+	`permission_token`,
+	`permission_title`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@permission_id,
+	'{{ details.permission_token }}',
+	'{{ details.permission_title }}',
+	'{{ details.notes }}',
+	@now,
+	@now
+);
+
+INSERT INTO `PermissionSetPermissions` (
+	`permission_set_id`,
+	`permission_id`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_permission_set_id,
+	@permission_id,
+	'Automatically granted to the administrators permission set.',
+	@now,
+	@now
+);
+{% endfor %}
+
+INSERT INTO `PermissionSetUserGroups` (
+	`user_group_id`,
+	`permission_set_id`,
+	`access_granted`,
+	`access_expiry`,
+	`has_access`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_user_group_id,
+	@administrators_permission_set_id,
+	@now,
+	@access_expiry,
+	1,
+	'Administrators group receives administrative permission set.',
+	@now,
+	@now
+);
+
+COMMIT;
+
+SELECT
+	@administrators_user_group_id AS administrators_group_id,
+	@administrators_permission_set_id AS administrators_privilege_set_id;
+
