@@ -1,17 +1,64 @@
-DATABASE_NAME='lampfire_dev'
-DATABASE_HOST='db'
-DATABASE_PORT='3306'
-DATABASE_APPLICATION_USER='lampfire'
-DATABASE_APPLICATION_USER_PASSWORD=''
+# Many of the settings in this file are secrets and should not be shared. Configure these
+# values on a per-environment basis and do not commit them to version control. The .env file is included in
+# .gitignore by default to prevent accidental commits of secrets. If you need to share configuration values
+# with your team, consider using a secrets manager.
 
-# Root password for the MariaDB container. Used only by Docker.
-MARIADB_ROOT_PASSWORD=''
+PROJECT_NAME="App"
+ORGANIZATION_NAME="Organization"
+COMPOSE_PROJECT_NAME=lampfire
 
-APPLICATION_URL='http://localhost:8080'
+## FAILSAFE CONFIGURATIONS
+# Set this to true to allow `php cli.php project-reset` to reset the framework, configurations,
+# database, and docker volumes. This is a destructive action and should be used with caution. If
+# not set, Lampfire assumes a false value and will not allow the command to run.
+ALLOW_PROJECT_RESET=false
+# Set this to true to allow `php cli.php init` to initialize the project. After the command has been
+# run once, this will be set to false to prevent accidental re-initialization and potential data loss.
+# If not set, Lampfire assumes a false value and will not allow the command to run.
+ALLOW_PROJECT_INIT=true
 
-# Set to 'true' to display detailed error messages.
-APP_DEBUG='false'
 
-# A 64-character hex string representing 256 bits of entropy.
+## DATABASE CONFIGURATION
+DATABASE_NAME=lampfire_auth
+DATABASE_HOST=db
+DATABASE_PORT=3306
+DATABASE_DBA_USER=lampfire_dba
+DATABASE_APPLICATION_USER=lampfire_auth
+DATABASE_APPLICATION_USER_PASSWORD=change_me_to_a_long_random_password
+
+## DEBUG MODE
+# Debug mode displays detailed error messages in the browser. The application assumes a false value
+# for this setting if not set. It is recommended to set this to false in production environments.
+APP_DEBUG=false
+
+
+## SUPERADMIN CONFIGURATION
+# The superadmin is an ordinary user account that gains elevated privileges
+# by having their username match this value. The superadmin can add/remove
+# users from the admin group and modify the admin permission set.
+# Create the user account first, then set this to their username.
+# During oridinary operation, this should be left blank to prevent accidental privilege escalation.
+SUPERADMIN_USERNAME=
+
+## ADMIN USER GROUP CONFIGURATION
+# These identifiers are immutable through the API. The association between
+# the admin user group and admin permission set cannot be deleted or reassigned.
+ADMIN_USER_GROUP_NAME="Application Administrators"
+
+## ADMIN PERMISSION CONFIGURATIONS
+ADMIN_PERMISSION_TOKEN_PREFIX=ADMIN_PERMISSION_
+# Admin Permission Set Configuration
+ADMIN_PERMISSION_SET_NAME="Admin Permissions"
+ADMIN_PERMISSION_SET_DESCRIPTION="Full administrative privileges."
+ADMIN_PERMISSION_SET_TOKEN_PREFIX=ADMIN_PERMISSION_SET_
+
+## APPLICATION CONFIGURATION
+APP_DOMAIN=localhost
+APP_PORT=8080
+USE_HTTPS=0
+
+## SECURITY CONFIGURATION (DO NOT SHARE)
+# 64-character hexadecimal key for PASETO v4.local tokens.
 # Generate with: php -r "echo bin2hex(random_bytes(32));"
-PASETO_KEY=''
+PASETO_KEY=your-64-character-hex-key-here
+TOKEN_ISSUER=lampfire
