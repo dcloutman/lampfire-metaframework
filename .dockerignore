@@ -3,6 +3,6 @@
 .config
 *.md
 llm-notes.txt
-code/vendor
+app/vendor
 cli/vendor
 cli/templates_compiled
