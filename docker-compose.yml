@@ -1,14 +1,12 @@
 # Docker Development Environment
 #
 # Provides a PHP 8.4 / Apache container and a MariaDB container.
-# Copy env_example to .env and fill in your values before running.
 #
-# Start:   docker-compose up -d
-# Stop:    docker-compose down
-# Rebuild: docker-compose up -d --build
-# Logs:    docker-compose logs -f
+# To use the project for the first time, run `php cli.php init`.
+# Run `php cli.php start` to start the Docker environment, and
+# `php cli.php stop` to stop it.
 
-version: '2.4'
+# DO NOT INSERT THE DEPRECATED `version` KEY. Docker Compose will automatically use the latest version.
 
 services:
     web:
@@ -19,34 +17,60 @@ services:
         ports:
             - "8080:80"
         volumes:
-            - ./code:/var/www/app/code
+            - ./app:/var/www/app/app
             - ./framework:/var/www/app/framework
             - ./cli:/var/www/app/cli
             - ./cli.php:/var/www/app/cli.php
-            - ./.config:/var/www/app/.config
+            - ./.env:/var/www/app/.env
         env_file:
-            - .config/.env
+            - .env
         depends_on:
             db:
                 condition: service_healthy
         restart: unless-stopped
+
+    cli:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        container_name: lampfire-cli
+        volumes:
+            - ./app:/var/www/app/app
+            - ./framework:/var/www/app/framework
+            - ./cli:/var/www/app/cli
+            - ./cli.php:/var/www/app/cli.php
+            - ./.env:/var/www/app/.env
+        env_file:
+            - .env
+        depends_on:
+            db:
+                condition: service_healthy
+        working_dir: /var/www/app
+        entrypoint: ["php", "cli.php"]
+        profiles:
+            - cli
 
     db:
         image: mariadb:11
         container_name: lampfire-db
         ports:
             - "3306:3306"
+        environment:
+            MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "0"
+            MARIADB_ROOT_PASSWORD: "${LAMPFIRE_BOOTSTRAP_ROOT_PASSWORD}"
+            MARIADB_ROOT_HOST: "%"
         env_file:
-            - .config/.env
+            - .env
         volumes:
-            - db_data:/var/lib/mysql
-            - ./code/migrations:/docker-entrypoint-initdb.d
+            - ./docker/mariadb/data:/var/lib/mysql
+            - ./docker/mariadb/initdb:/docker-entrypoint-initdb.d
         healthcheck:
-            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 --port 3306 --silent || exit 1"]
             interval: 5s
             timeout: 5s
-            retries: 10
+            retries: 20
         restart: unless-stopped
 
-volumes:
-    db_data:
+networks:
+    default:
+        name: "${COMPOSE_PROJECT_NAME}_network"
