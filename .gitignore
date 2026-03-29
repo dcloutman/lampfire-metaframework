@@ -1,12 +1,15 @@
 # Don't commit actual configuration or environment files.
-.config
 .env*
 
 # Ignore compiled templates except for .gitkeep files.
 /cli/templates_compiled/*
 !/cli/templates_compiled/.gitkeep
-/code/templates_compiled/*
-!/code/templates_compiled/.gitkeep
+/app/templates_compiled/*
+!/app/templates_compiled/.gitkeep
+
+# Ignore host MariaDB data files while keeping the directory in git.
+/docker/mariadb/data/*
+!/docker/mariadb/data/.gitkeep
 
 # Ignore vendor files.
 vendor/
