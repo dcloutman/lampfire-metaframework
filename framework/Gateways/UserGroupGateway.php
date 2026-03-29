@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class UserGroupGateway extends AbstractDatabaseGateway
 {
@@ -71,7 +73,7 @@ class UserGroupGateway extends AbstractDatabaseGateway
      */
     public function insert(string $userGroupId, string $groupName, ?string $description = null): bool
     {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO UserGroups (user_group_id, group_name, description)
@@ -104,7 +106,7 @@ class UserGroupGateway extends AbstractDatabaseGateway
      */
     public function update(string $userGroupId, string $groupName, ?string $description = null): bool
     {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE UserGroups

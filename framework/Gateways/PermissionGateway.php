@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class PermissionGateway extends AbstractDatabaseGateway
 {
@@ -82,7 +84,7 @@ class PermissionGateway extends AbstractDatabaseGateway
         string $permissionTitle,
         string $notes = ''
     ): bool {
-        $this->requireValidUuid($permissionId);
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO Permissions (permission_id, permission_token, permission_title, notes)
@@ -121,7 +123,7 @@ class PermissionGateway extends AbstractDatabaseGateway
         string $permissionTitle,
         ?string $notes = null
     ): bool {
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE Permissions

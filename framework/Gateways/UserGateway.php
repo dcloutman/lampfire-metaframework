@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class UserGateway extends AbstractDatabaseGateway
 {
@@ -65,7 +67,7 @@ class UserGateway extends AbstractDatabaseGateway
      */
     public function findById(string $userId): ?array
     {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $sql = 'SELECT u.user_id, u.username,
                        ud.first_name, ud.last_name, ud.email_address,
@@ -134,7 +136,7 @@ class UserGateway extends AbstractDatabaseGateway
         string $username,
         string $passwordHash
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO Users (user_id, username, password_hash)
@@ -168,7 +170,7 @@ class UserGateway extends AbstractDatabaseGateway
         string $userId,
         string $username
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE Users
@@ -200,7 +202,7 @@ class UserGateway extends AbstractDatabaseGateway
      */
     public function updatePasswordHash(string $userId, string $passwordHash): bool
     {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE Users

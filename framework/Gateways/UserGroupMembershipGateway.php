@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class UserGroupMembershipGateway extends AbstractDatabaseGateway
 {
@@ -39,7 +41,7 @@ class UserGroupMembershipGateway extends AbstractDatabaseGateway
      */
     public function findByGroupId(string $userGroupId): array
     {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'SELECT user_id, user_group_id, access_granted, access_expiry,
@@ -69,7 +71,7 @@ class UserGroupMembershipGateway extends AbstractDatabaseGateway
      */
     public function findByUserId(string $userId): array
     {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'SELECT user_id, user_group_id, access_granted, access_expiry,
@@ -124,8 +126,8 @@ class UserGroupMembershipGateway extends AbstractDatabaseGateway
         string $accessExpiry,
         bool $hasAccess
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO UserGroupMemberships
@@ -168,8 +170,8 @@ class UserGroupMembershipGateway extends AbstractDatabaseGateway
         string $accessExpiry,
         bool $hasAccess
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE UserGroupMemberships

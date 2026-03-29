@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class UserDataGateway extends AbstractDatabaseGateway
 {
@@ -89,7 +91,7 @@ class UserDataGateway extends AbstractDatabaseGateway
         ?string $firstName = null,
         ?string $lastName = null
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO UserData (user_id, first_name, last_name, email_address)
@@ -128,7 +130,7 @@ class UserDataGateway extends AbstractDatabaseGateway
         ?string $firstName = null,
         ?string $lastName = null
     ): bool {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE UserData

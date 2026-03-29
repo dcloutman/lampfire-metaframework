@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class PermissionSetPermissionGateway extends AbstractDatabaseGateway
 {
@@ -39,7 +41,7 @@ class PermissionSetPermissionGateway extends AbstractDatabaseGateway
      */
     public function findBySetId(string $permissionSetId): array
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $statement = $this->pdo->prepare(
             'SELECT permission_set_id, permission_id, notes, created_at, updated_at
@@ -86,8 +88,8 @@ class PermissionSetPermissionGateway extends AbstractDatabaseGateway
      */
     public function insert(string $permissionSetId, string $permissionId, ?string $notes = null): bool
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO PermissionSetPermissions (permission_set_id, permission_id, notes)
@@ -120,8 +122,8 @@ class PermissionSetPermissionGateway extends AbstractDatabaseGateway
      */
     public function update(string $permissionSetId, string $permissionId, ?string $notes = null): bool
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE PermissionSetPermissions

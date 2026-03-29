@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace Lampfire\Gateways;
 
+use Lampfire\Utilities\Enforcers;
+
 
 class PermissionSetUserGroupGateway extends AbstractDatabaseGateway
 {
@@ -39,7 +41,7 @@ class PermissionSetUserGroupGateway extends AbstractDatabaseGateway
      */
     public function findBySetId(string $permissionSetId): array
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $statement = $this->pdo->prepare(
             'SELECT user_group_id, permission_set_id, access_granted, access_expiry,
@@ -69,7 +71,7 @@ class PermissionSetUserGroupGateway extends AbstractDatabaseGateway
      */
     public function findByGroupId(string $userGroupId): array
     {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
 
         $statement = $this->pdo->prepare(
             'SELECT user_group_id, permission_set_id, access_granted, access_expiry,
@@ -126,8 +128,8 @@ class PermissionSetUserGroupGateway extends AbstractDatabaseGateway
         bool $hasAccess,
         ?string $notes = null
     ): bool {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $statement = $this->pdo->prepare(
             'INSERT INTO PermissionSetUserGroups
@@ -173,8 +175,8 @@ class PermissionSetUserGroupGateway extends AbstractDatabaseGateway
         bool $hasAccess,
         ?string $notes = null
     ): bool {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $statement = $this->pdo->prepare(
             'UPDATE PermissionSetUserGroups

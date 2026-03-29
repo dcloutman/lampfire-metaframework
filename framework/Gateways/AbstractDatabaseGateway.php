@@ -139,22 +139,6 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
     }
 
     /**
-     * Validates that a string is a valid UUID.
-     *
-     * @param string $uuid The UUID string to validate.
-     * @return void
-     * @throws \InvalidArgumentException When the value is not a valid UUID.
-     */
-    protected function requireValidUuid(string $uuid): void
-    {
-        if (!preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/', $uuid)) {
-            throw new \InvalidArgumentException(
-                sprintf('The value is not a valid UUID: "%s".', $uuid)
-            );
-        }
-    }
-
-    /**
      * Deletes a single row by its full primary key.
      *
      * @param array<string, string> $keyValues Column-name-to-value pairs.
