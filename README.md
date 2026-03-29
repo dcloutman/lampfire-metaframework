@@ -16,13 +16,12 @@ This repository contains a project skeleton for PHP applications that provides a
 ## Project Structure
 
 ```
-code/                   Application source code.
+app/                   Application source code.
   src/
     lib/
       Controllers/      Slim route controllers organised by concern.
+        Admin/          Administrative panel controllers.
         Api/            RESTful API controllers.
-        App/            Web application controllers.
-          Admin/        Administrative panel controllers.
         Auth/           Authentication controllers.
       Gateways/         Data access layer (one class per database table).
       Services/         Business logic layer.
@@ -48,10 +47,10 @@ cli.php                 CLI entry point.
 
 ## Configurations
 
-The `.env` file lives in the `.config/` directory at the project root. Copy `env_example` to `.config/.env` and fill in your values.
+The `.env` file lives at the project root. Copy `env_example` to `.env` and fill in your values.
 
 ```bash
-cp env_example .config/.env
+cp env_example .env
 ```
 
 The `.env` file is read by both Docker Compose and the PHP application. All environment variables are accessed through typed configuration classes in the framework. Application code should never call `getenv()` or read `$_ENV` directly.
@@ -65,8 +64,10 @@ The `.env` file is read by both Docker Compose and the PHP application. All envi
 | `DATABASE_PORT` | Database port. Default: `3306`. |
 | `DATABASE_APPLICATION_USER` | Database user for the application. |
 | `DATABASE_APPLICATION_USER_PASSWORD` | Password for the database user. |
-| `MARIADB_ROOT_PASSWORD` | Root password for the MariaDB container. |
-| `APPLICATION_URL` | Public URL of the application. |
+| `PROJECT_NAME` | Human-readable name of the application. |
+| `APP_DOMAIN` | Domain name or IP address of the application. Default: `localhost`. |
+| `APP_PORT` | Port the application listens on. Default: `8080`. |
+| `USE_HTTPS` | Set to `1` to generate `https://` URLs. Default: `0`. |
 | `APP_DEBUG` | Set to `true` to display detailed error messages. Default: `false`. |
 | `PASETO_KEY` | A 64-character hex string (256 bits of entropy). |
 
@@ -86,8 +87,8 @@ The project ships with a Docker Compose setup that provides two containers:
 ### Starting the Environment
 
 ```bash
-cp env_example .config/.env
-# Edit .config/.env and fill in passwords and PASETO_KEY.
+cp env_example .env
+# Edit .env and fill in passwords and PASETO_KEY.
 
 docker compose up -d
 ```
@@ -114,11 +115,14 @@ docker compose logs -f
 
 ### Resetting the Database
 
-The database schema is loaded from `docker/mariadb/init/001-schema.sql` only when the volume is first created. To reset the database, remove the volume and restart:
+MariaDB data is persisted on the host in `docker/mariadb/data` and is bind-mounted into the container at `/var/lib/mysql`. This allows the database to survive container recreation.
+
+To fully delete the database files and rebuild from scratch, run:
 
 ```bash
-docker compose down -v
-docker compose up -d
+php cli.php project-reset
+php cli.php start
+php cli.php init
 ```
 
 ## Routing
