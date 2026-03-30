@@ -7,6 +7,9 @@
 /app/templates_compiled/*
 !/app/templates_compiled/.gitkeep
 
+# Ignore logs.
+/app/logs/*
+
 # Ignore host MariaDB data files while keeping the directory in git.
 /docker/mariadb/data/*
 !/docker/mariadb/data/.gitkeep

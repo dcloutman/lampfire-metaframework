@@ -86,6 +86,13 @@ class UserController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        $authUserId   = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, 'ADMIN_PERMISSION_USER_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create users.');
+        }
+
         $body      = $request->getParsedBody();
         $username  = $this->extractRequiredStringFromBodyData($body, 'username');
         $password  = $this->extractRequiredStringFromBodyData($body, 'password');
@@ -120,6 +127,13 @@ class UserController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        $authUserId   = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, 'ADMIN_PERMISSION_USER_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update users.');
+        }
+
         $userId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($userId) === false) {
@@ -127,21 +141,16 @@ class UserController extends AbstractRestController
         }
 
         $body      = $request->getParsedBody();
-        $username  = $this->extractRequiredStringFromBodyData($body, 'username');
         $email     = $this->extractRequiredStringFromBodyData($body, 'email_address');
         $firstName = $this->extractOptionalStringFromBodyData($body, 'first_name');
         $lastName  = $this->extractOptionalStringFromBodyData($body, 'last_name');
-
-        if ($username === null || $username === '') {
-            return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The username field is required.');
-        }
 
         if ($email === null || $email === '') {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The email_address field is required.');
         }
 
         try {
-            $user = $this->userService->updateUser($userId, $username, $email, $firstName, $lastName);
+            $user = $this->userService->updateUser($userId, $email, $firstName, $lastName);
 
             if ($user === null) {
                 return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested user does not exist.');
@@ -153,31 +162,4 @@ class UserController extends AbstractRestController
         }
     }
 
-    /**
-     * DELETE /users/{id} - Deletes a user by identifier.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response A 204 response on success or an error.
-     */
-    public function delete(Request $request, Response $response): Response
-    {
-        $userId = $this->routeArgument($request, 'id');
-
-        if ($this->isValidUuid($userId) === false) {
-            return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The id parameter must be a valid UUID v4.');
-        }
-
-        try {
-            $deleted = $this->userService->deleteUser($userId);
-
-            if ($deleted === false) {
-                return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested user does not exist.');
-            }
-
-            return $response->withStatus(204);
-        } catch (InvalidArgumentException $exception) {
-            return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', $exception->getMessage());
-        }
-    }
 }

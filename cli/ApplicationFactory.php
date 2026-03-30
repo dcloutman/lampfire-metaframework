@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cli;
 
+use Cli\Commands\CreateUserCommand;
 use Cli\Commands\InitCommand;
 use Cli\Commands\KillCommand;
 use Cli\Commands\ProjectResetCommand;
@@ -23,6 +24,7 @@ final class ApplicationFactory
     {
         $application = new Application('Lampfire CLI');
         $application->register(InitCommand::class);
+        $application->register(CreateUserCommand::class);
         $application->register(StartCommand::class);
         $application->register(KillCommand::class);
         $application->register(RebuildImagesCommand::class);

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Lampfire\Services;
 
+use Lampfire\Config\SecuritySettings;
 use Lampfire\Gateways\UserDataGateway;
 use Lampfire\Gateways\UserGateway;
 use InvalidArgumentException;
@@ -72,8 +73,8 @@ class UserService extends AbstractService
      * generates a UUID v4, hashes the password with Argon2id, and inserts
      * rows into Users and UserData.
      *
-     * @param string      $username     The unique login name (minimum 3 characters).
-     * @param string      $password     The plaintext password (minimum 8 characters).
+     * @param string      $username     The unique login name (minimum 6 characters).
+     * @param string      $password     The plaintext password (minimum 12 characters).
      * @param string      $emailAddress The email address for the UserData record.
      * @param string|null $firstName    The optional first name.
      * @param string|null $lastName     The optional last name.
@@ -87,9 +88,8 @@ class UserService extends AbstractService
         ?string $firstName = null,
         ?string $lastName = null
     ): array {
-        $this->requireMinLength($username, 3, 'username');
-        $this->requireMinLength($password, 8, 'password');
-        $this->requireValidEmail($emailAddress);
+        $this->requireMinLength($username, SecuritySettings::MINIMUM_USERNAME_LENGTH, 'username');
+        $this->requireMinLength($password, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
 
         if ($this->userGateway->usernameExists($username)) {
             throw new InvalidArgumentException('The username is already taken.');
@@ -115,7 +115,6 @@ class UserService extends AbstractService
      * and writes the changes to Users and UserData.
      *
      * @param string      $userId       The UUID of the user to update.
-     * @param string      $username     The new username.
      * @param string      $emailAddress The new email address.
      * @param string|null $firstName    The optional new first name.
      * @param string|null $lastName     The optional new last name.
@@ -124,13 +123,11 @@ class UserService extends AbstractService
      */
     public function updateUser(
         string $userId,
-        string $username,
         string $emailAddress,
         ?string $firstName = null,
         ?string $lastName = null
     ): ?array {
         $this->requireValidUuid($userId, 'user_id');
-        $this->requireMinLength($username, 3, 'username');
         $this->requireValidEmail($emailAddress);
 
         $existingUser = $this->userGateway->findById($userId);
@@ -138,15 +135,9 @@ class UserService extends AbstractService
             return null;
         }
 
-        if ($this->userGateway->usernameExists($username, $userId)) {
-            throw new InvalidArgumentException('The username is already taken.');
-        }
-
         if ($this->userDataGateway->emailExists($emailAddress, $userId)) {
             throw new InvalidArgumentException('The email address is already registered.');
         }
-
-        $this->userGateway->update($userId, $username);
 
         // Update or create the UserData record for PII.
         $existingData = $this->userDataGateway->findByUserId($userId);
@@ -166,14 +157,14 @@ class UserService extends AbstractService
      * before updating the hash.
      *
      * @param string $userId      The UUID of the user.
-     * @param string $newPassword The new plaintext password (minimum 8 characters).
+     * @param string $newPassword The new plaintext password (minimum 12 characters).
      * @return bool True when the password was successfully updated.
      * @throws InvalidArgumentException When the user_id or password is invalid.
      */
     public function resetPassword(string $userId, string $newPassword): bool
     {
         $this->requireValidUuid($userId, 'user_id');
-        $this->requireMinLength($newPassword, 8, 'password');
+        $this->requireMinLength($newPassword, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
 
         $existingUser = $this->userGateway->findById($userId);
         if ($existingUser === null) {
@@ -186,27 +177,43 @@ class UserService extends AbstractService
     }
 
     /**
-     * Deletes a user and the associated PII record.
+     * Returns true when the given user is authorized to write User records.
      *
-     * The UserData record is deleted first to respect the foreign key
-     * constraint. Returns false when the user does not exist.
+     * Authorization is granted when the user is the active superadmin (identified
+     * by their username matching the SUPERADMIN_USERNAME environment variable) or
+     * when they hold the specified admin permission token through a group membership
+     * or a direct permission set assignment.
      *
-     * @param string $userId The UUID of the user.
-     * @return bool True when the user was deleted.
-     * @throws InvalidArgumentException When the user_id is not a valid UUID.
+     * @param string $authUserId        The UUID of the authenticated user.
+     * @param string $authUsername      The username of the authenticated user.
+     * @param string $permissionToken   The permission token required for the operation.
+     * @return bool True when the user is authorized.
      */
-    public function deleteUser(string $userId): bool
-    {
-        $this->requireValidUuid($userId, 'user_id');
-
-        $existingUser = $this->userGateway->findById($userId);
-        if ($existingUser === null) {
-            return false;
+    public function isAuthorizedForUserWrite(
+        string $authUserId,
+        string $authUsername,
+        string $permissionToken
+    ): bool {
+        if ($this->isSuperadmin($authUsername)) {
+            return true;
         }
 
-        // Delete the PII record before the credential record.
-        $this->userDataGateway->deleteByUserId($userId);
+        return $this->userGateway->userHasPermissionToken($authUserId, $permissionToken);
+    }
 
-        return $this->userGateway->deleteById($userId);
+    /**
+     * Returns true when the given username matches the active superadmin username.
+     *
+     * The superadmin is transient. When the SUPERADMIN_USERNAME environment variable
+     * is absent or empty, no user is considered a superadmin.
+     *
+     * @param string $username The username to test.
+     * @return bool True when the username matches the configured superadmin.
+     */
+    private function isSuperadmin(string $username): bool
+    {
+        $superadmin = getenv('SUPERADMIN_USERNAME');
+
+        return $superadmin !== false && $superadmin !== '' && $username === $superadmin;
     }
 }

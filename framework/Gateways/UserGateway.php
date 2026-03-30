@@ -159,40 +159,6 @@ class UserGateway extends AbstractDatabaseGateway
     }
 
     /**
-     * Updates the username for an existing user record.
-     *
-     * @param string $userId   The UUID of the user.
-     * @param string $username The new username.
-     * @return bool True when the update affects at least one row.
-     * @throws \InvalidArgumentException When the user_id is not a valid UUID.
-     */
-    public function update(
-        string $userId,
-        string $username
-    ): bool {
-        Enforcers::enforceValidUuid($userId, 'user_id');
-
-        $statement = $this->pdo->prepare(
-            'UPDATE Users
-             SET username = :username
-             WHERE user_id = :user_id'
-        );
-        if ($statement === false) {
-            throw new \RuntimeException('Failed to prepare SQL statement.');
-        }
-
-        $success = $statement->execute([
-            'user_id'  => $userId,
-            'username' => $username,
-        ]);
-        if ($success === false) {
-            throw new \RuntimeException('Failed to execute SQL statement.');
-        }
-
-        return $statement->rowCount() > 0;
-    }
-
-    /**
      * Updates the password hash for a specific user.
      *
      * @param string $userId       The UUID of the user.
@@ -268,5 +234,73 @@ class UserGateway extends AbstractDatabaseGateway
         }
 
         return (int) $statement->fetchColumn() > 0;
+    }
+
+    /**
+     * Returns true when the user holds the specified permission token.
+     *
+     * Both grant paths are evaluated: permissions inherited through a
+     * UserGroup membership and permissions assigned directly via a
+     * PermissionSetMembers entry. A membership is considered active only
+     * when its has_access flag is set and its access_expiry has not passed.
+     *
+     * @param string $userId          The UUID of the user to check.
+     * @param string $permissionToken The programmatic permission token.
+     * @return bool True when the user has the permission through either path.
+     * @throws \RuntimeException When the SQL statement fails.
+     */
+    public function userHasPermissionToken(string $userId, string $permissionToken): bool
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+
+        $sql = 'SELECT 1
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM UserGroupMemberships ugm
+                    INNER JOIN UserGroups ug
+                        ON ug.user_group_id = ugm.user_group_id
+                       AND ug.enabled = 1
+                    INNER JOIN PermissionSetUserGroups psug
+                        ON psug.user_group_id = ug.user_group_id
+                       AND psug.has_access = 1
+                       AND psug.access_expiry > UTC_TIMESTAMP()
+                    INNER JOIN PermissionSetPermissions psp
+                        ON psp.permission_set_id = psug.permission_set_id
+                    INNER JOIN Permissions p
+                        ON p.permission_id = psp.permission_id
+                       AND p.permission_token = :token_group
+                    WHERE ugm.user_id = :uid_group
+                      AND ugm.has_access = 1
+                      AND ugm.access_expiry > UTC_TIMESTAMP()
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM PermissionSetMembers psm
+                    INNER JOIN PermissionSetPermissions psp
+                        ON psp.permission_set_id = psm.permission_set_id
+                    INNER JOIN Permissions p
+                        ON p.permission_id = psp.permission_id
+                       AND p.permission_token = :token_direct
+                    WHERE psm.user_id = :uid_direct
+                      AND psm.has_access = 1
+                      AND psm.access_expiry > UTC_TIMESTAMP()
+                )';
+
+        $statement = $this->pdo->prepare($sql);
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare SQL statement.');
+        }
+
+        $success = $statement->execute([
+            'uid_group'    => $userId,
+            'token_group'  => $permissionToken,
+            'uid_direct'   => $userId,
+            'token_direct' => $permissionToken,
+        ]);
+        if ($success === false) {
+            throw new \RuntimeException('Failed to execute SQL statement.');
+        }
+
+        return $statement->fetch() !== false;
     }
 }

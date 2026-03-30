@@ -14,6 +14,23 @@ namespace Lampfire\Config;
 
 class SecuritySettings extends AbstractSettings
 {
+    /**
+     * The minimum length of an application account's password.
+     */
+    public const MINIMUM_PASSWORD_LENGTH = 12;
+
+    /**
+     * The minimum length of an application account's username.
+     */
+    public const MINIMUM_USERNAME_LENGTH = 6;
+
+    /**
+     * The secret key used to encrypt and decrypt every session token the application issues.
+     *
+     * An attacker who obtains this value can create valid session tokens for any user account.
+     * This value is read from the PASETO_KEY environment variable and must never be logged
+     * or exposed through any interface.
+     */
     private string $pasetoKeyHex;
 
     /**
