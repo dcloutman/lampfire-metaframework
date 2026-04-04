@@ -9,6 +9,7 @@ use Cli\Console\AbstractCommand;
 use Cli\Console\Input;
 use Cli\Console\Output;
 use Dotenv\Dotenv;
+use Lampfire\Utilities\Randomizers;
 use Lampfire\Utilities\Terminal;
 use PDO;
 use PDOException;
@@ -59,7 +60,7 @@ final class InitCommand extends AbstractCommand
             }
 
             $output->writeln();
-            $rootPassword = $this->generatePassword(24, 48);
+            $rootPassword = Randomizers::generatePassword(24, 48);
             $output->warning('Generated MariaDB root password for this initialization run:');
             $output->writeln($rootPassword);
             $output->warning('Store this password securely. It is only shown once and is never saved to disk.');
@@ -342,7 +343,7 @@ final class InitCommand extends AbstractCommand
             }
 
             if ($choice === 'G') {
-                $dbaPassword = $this->generatePassword(24, 48);
+                $dbaPassword = Randomizers::generatePassword(24, 48);
 
                 $output->writeln();
                 $output->info(sprintf('Generated password for DBA user %s:', $dbaUser));
@@ -476,7 +477,7 @@ final class InitCommand extends AbstractCommand
         }
 
         if ($choice === 'G' && $isGeneratable) {
-            $generated = $this->generatePassword($minLength, $maxLength);
+            $generated = Randomizers::generatePassword($minLength, $maxLength);
             $output->writeln();
             $output->info(sprintf('  Generated %s:', $name));
             $output->writeln();
@@ -1123,51 +1124,6 @@ final class InitCommand extends AbstractCommand
     }
 
     /**
-     * Generates a cryptographically random password.
-     *
-     * The alphabet consists of uppercase and lowercase letters, digits, and special characters.
-     *
-     * @param int $minLength The minimum length of the password.
-     * @param int $maxLength The maximum length of the password.
-     * @return string A random password.
-     */
-    private function generatePassword(int $minLength = 24, int $maxLength = 48): string
-    {
-        $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.,/|+=';
-        $length   = random_int($minLength, $maxLength);
-        $password = '';
-
-        $alphabet = $this->shuffleString($alphabet, random_int(20, 50));
-
-        for ($i = 0; $i < $length; $i++) {
-            $alphabet = $this->shuffleString($alphabet, random_int(20, 50));
-            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-        }
-
-        return $password;
-    }
-
-    /**
-     * Returns a cryptographically shuffled copy of a string using Fisher-Yates.
-     *
-     * @param string $string The string to shuffle.
-     * @return string The shuffled string.
-     */
-    private function shuffleString(string $string, int $numShuffles = 10): string
-    {
-        $characters = str_split($string);
-        $last       = count($characters) - 1;
-
-        for ($i = $last; $i > 0; $i--) {
-            $j = random_int(0, $i);
-
-            [$characters[$i], $characters[$j]] = [$characters[$j], $characters[$i]];
-        }
-
-        return implode('', $characters);
-    }
-
-    /**
      * Pipes a single SQL migration file to the mysql command-line client as the DBA user.
      *
      * @param string $fileName    The base name of the migration file in app/migrations/.
@@ -1257,13 +1213,5 @@ final class InitCommand extends AbstractCommand
         return ((string) getenv('ADMIN_PERMISSION_SET_TOKEN_PREFIX')) . 'ADMIN';
     }
 
-    /**
-     * Builds the list of permission token definitions for the administrators permission set.
-     *
-     * Each entry contains the permission_token, permission_title, and notes fields
-     * that the migration template inserts into the Permissions table.
-     *
-     * @return array<string, array{permission_token: string, permission_title: string, notes: string}>
-     */
 }
 
