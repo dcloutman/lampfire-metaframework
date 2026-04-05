@@ -48,6 +48,13 @@ class UserController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        $authUserId   = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, 'ADMIN_PERMISSION_USER_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read users.');
+        }
+
         $users = $this->userService->getAllUsers();
 
         return $this->prepareJsonResponse($response, ['data' => $users]);
@@ -62,6 +69,13 @@ class UserController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        $authUserId   = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, 'ADMIN_PERMISSION_USER_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read users.');
+        }
+
         $userId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($userId) === false) {
@@ -144,13 +158,35 @@ class UserController extends AbstractRestController
         $email     = $this->extractRequiredStringFromBodyData($body, 'email_address');
         $firstName = $this->extractOptionalStringFromBodyData($body, 'first_name');
         $lastName  = $this->extractOptionalStringFromBodyData($body, 'last_name');
+        $enabledRaw = $body['enabled'] ?? null;
 
         if ($email === null || $email === '') {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The email_address field is required.');
         }
 
+        if ($enabledRaw !== null && !is_bool($enabledRaw) && $enabledRaw !== '1' && $enabledRaw !== '0' && $enabledRaw !== 'true' && $enabledRaw !== 'false') {
+            return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The enabled field must be a boolean value.');
+        }
+
+        $existingUser = $this->userService->getUserById($userId);
+        if ($existingUser === null) {
+            return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested user does not exist.');
+        }
+
+        if ($enabledRaw === null) {
+            $enabled = (bool) $existingUser['enabled'];
+        } elseif (is_bool($enabledRaw)) {
+            $enabled = $enabledRaw;
+        } else {
+            $enabled = $enabledRaw === '1' || $enabledRaw === 'true';
+        }
+
+        if ($userId === $authUserId && $enabled === false) {
+            return $this->prepareJsonErrorResponse($response, 422, 'Unprocessable Entity', 'You cannot disable your own account.');
+        }
+
         try {
-            $user = $this->userService->updateUser($userId, $email, $firstName, $lastName);
+            $user = $this->userService->updateUser($userId, $email, $enabled, $firstName, $lastName);
 
             if ($user === null) {
                 return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested user does not exist.');
@@ -160,6 +196,18 @@ class UserController extends AbstractRestController
         } catch (InvalidArgumentException $exception) {
             return $this->prepareJsonErrorResponse($response, 400, 'Validation Error', $exception->getMessage());
         }
+    }
+
+    /**
+     * A hard check against deleting users. Users can be disabled. Try that!
+     *
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function delete(Request $request, Response $response): Response
+    {
+        return $this->prepareJsonErrorResponse($response, 405, 'Method Not Allowed', 'Deleting users is not supported by this API.');
     }
 
 }

@@ -116,6 +116,7 @@ class UserService extends AbstractService
      *
      * @param string      $userId       The UUID of the user to update.
      * @param string      $emailAddress The new email address.
+     * @param bool        $enabled      Whether the account is enabled.
      * @param string|null $firstName    The optional new first name.
      * @param string|null $lastName     The optional new last name.
      * @return array<string, mixed>|null The updated user record or null when not found.
@@ -124,6 +125,7 @@ class UserService extends AbstractService
     public function updateUser(
         string $userId,
         string $emailAddress,
+        bool $enabled = true,
         ?string $firstName = null,
         ?string $lastName = null
     ): ?array {
@@ -138,6 +140,8 @@ class UserService extends AbstractService
         if ($this->userDataGateway->emailExists($emailAddress, $userId)) {
             throw new InvalidArgumentException('The email address is already registered.');
         }
+
+        $this->userGateway->setEnabled($userId, $enabled);
 
         // Update or create the UserData record for PII.
         $existingData = $this->userDataGateway->findByUserId($userId);

@@ -3,47 +3,65 @@ declare(strict_types=1);
 
 namespace Lampfire\Records;
 
-use PDOStatement;
+use Lampfire\Database\DatabaseConnection;
 
 /**
  * AbstractDatabaseRecord serves as a base class for all database-backed record objects in the application.
  */
-abstract class AbstractDatabaseRecord extends AbstractRecord {
-    protected static string|null $query = null;
-    protected static PDOStatement|null $statement = null;
-    protected static array $primaryKeys = [];
+abstract class AbstractDatabaseRecord extends AbstractRecord
+{
+    protected ?string $query = null;
+    protected array $primaryKeys = [];
+    protected DatabaseConnection $connection;
 
-    public static function getByPrimaryKey(...$keyValues): ?self
+    public function __construct(DatabaseConnection $connection)
     {
-        if (static::$query === null) {
+        $this->connection = $connection;
+    }
+
+    /**
+     * Builds a concrete record instance from a database row.
+     *
+     * @param array<string, mixed> $row The fetched row data.
+     */
+    abstract protected function hydrate(array $row): self;
+
+    public function getByPrimaryKey(...$keyValues): ?self
+    {
+        if ($this->query === null || trim($this->query) === '') {
             throw new \LogicException('Query not defined for ' . static::class);
         }
-        if (count($keyValues) !== count(static::$primaryKeys)) {
+
+        if (count($this->primaryKeys) === 0) {
+            throw new \LogicException('Primary keys not defined for ' . static::class);
+        }
+
+        if (count($keyValues) !== count($this->primaryKeys)) {
             throw new \InvalidArgumentException('Incorrect number of primary key values provided.');
         }
 
-        if (static::$statement === null) {
-            static::$statement = Database::getConnection()->prepare(static::$query);
-            if (static::$statement === false) {
-                throw new \RuntimeException('Failed to prepare statement for ' . static::class);
-            }
-        }
-
+        $queryParameters = [];
         foreach ($keyValues as $index => $value) {
-            static::$statement->bindValue($index + 1, $value);
+            $primaryKey = $this->primaryKeys[$index];
+            $queryParameters[$primaryKey] = $value;
         }
 
-        $result = static::$statement->execute();
-        if ($result === false) {
+        $statement = $this->connection->getConnection()->prepare($this->query);
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare statement for ' . static::class);
+        }
+
+        $result = $statement->execute($queryParameters);
+        if ($result !== true) {
             throw new \RuntimeException('Failed to execute statement for ' . static::class);
         }
-        
-        $data = static::$statement->fetch();
+
+        $data = $statement->fetch();
 
         if ($data === false) {
             return null;
         }
 
-        return new static($data);
+        return $this->hydrate($data);
     }
 }

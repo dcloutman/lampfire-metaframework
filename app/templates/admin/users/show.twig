@@ -6,11 +6,6 @@
     <h1>User Details</h1>
     <div class="page-header-actions">
         <a href="/admin/users/{{ user.user_id }}?action=edit" class="btn btn-primary">Edit</a>
-        <form method="post" action="/admin/users/{{ user.user_id }}" class="inline-form" data-confirm="Are you sure you want to delete this user?">
-            <input type="hidden" name="_METHOD" value="DELETE" />
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <button type="submit" class="btn btn-danger">Delete</button>
-        </form>
     </div>
 </header>
 
@@ -30,6 +25,9 @@
 
         <dt>Email Address</dt>
         <dd>{{ user.email_address | default('--') }}</dd>
+
+        <dt>Account Status</dt>
+        <dd>{{ user.enabled ? 'Enabled' : 'Disabled' }}</dd>
 
         <dt>Created</dt>
         <dd>{{ user.created_at }}</dd>

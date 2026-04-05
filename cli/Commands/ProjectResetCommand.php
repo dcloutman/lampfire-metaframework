@@ -25,7 +25,7 @@ use Twig\Loader\FilesystemLoader as TwigFilesystemLoader;
     description: 'Reset the Docker development environment and compiled template caches.',
     help: 'Stops and removes the Docker project containers, deletes host MariaDB data files in docker/mariadb/data, '
         . 'and clears compiled Twig template caches. This operation is destructive and cannot be undone. '
-        . 'Run php cli.php init to recreate configuration, then php cli.php start, then php cli.php init again.',
+        . 'All application data is permanently lost. Run `php cli.php init` to reinitialize the database accounts and the schema.',
 
 )]
 final class ProjectResetCommand extends AbstractCommand
@@ -66,7 +66,7 @@ final class ProjectResetCommand extends AbstractCommand
 
         $output->writeln();
         $output->info('Project reset complete.');
-        $output->writeln('Run `php cli.php start`, then `php cli.php init` to recreate the database and users.');
+        $output->writeln('Run `php cli.php init` to reinitialize the database schema and administrator accounts.');
 
         return 0;
     }

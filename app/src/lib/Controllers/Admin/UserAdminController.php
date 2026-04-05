@@ -104,9 +104,10 @@ class UserAdminController extends AbstractAdminController
 
         if ($action === 'edit') {
             return $this->twig->render($response, 'admin/users/edit.twig', [
-                'pageTitle'  => 'Edit User',
-                'user'       => $user,
-                'csrf_token' => $this->getCsrfToken($request),
+                'pageTitle'    => 'Edit User',
+                'user'         => $user,
+                'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
+                'csrf_token'   => $this->getCsrfToken($request),
             ]);
         }
 
@@ -206,7 +207,7 @@ class UserAdminController extends AbstractAdminController
     }
 
     /**
-     * DELETE /admin/users/{id} - Deletes a user record.
+     * DELETE /admin/users/{id} - Deleting users is not supported.
      *
      * @param Request  $request  The incoming request.
      * @param Response $response The outgoing response.
@@ -214,14 +215,6 @@ class UserAdminController extends AbstractAdminController
      */
     public function delete(Request $request, Response $response): Response
     {
-        $userId = $this->routeArgument($request, 'id');
-
-        if ($this->isValidUuid($userId) === false) {
-            return $this->notFound($response, 'The user identifier is not valid.');
-        }
-
-        $this->userService->deleteUser($userId);
-
         return $this->redirect($response, '/admin/users');
     }
 
@@ -240,10 +233,22 @@ class UserAdminController extends AbstractAdminController
         Request $request,
         Response $response
     ): Response {
-        $username  = $this->formString($body, 'username');
-        $email     = $this->formString($body, 'email_address');
-        $firstName = $this->formString($body, 'first_name');
-        $lastName  = $this->formString($body, 'last_name');
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $email      = $this->formString($body, 'email_address');
+        $firstName  = $this->formString($body, 'first_name');
+        $lastName   = $this->formString($body, 'last_name');
+        $enabled    = $this->formString($body, 'enabled') === '1';
+
+        if ($userId === $authUserId && $enabled === false) {
+            $existingUser = $this->userService->getUserById($userId);
+            return $this->twig->render($response, 'admin/users/edit.twig', [
+                'pageTitle'    => 'Edit User',
+                'error'        => 'You cannot disable your own account.',
+                'user'         => $existingUser,
+                'auth_user_id' => $authUserId,
+                'csrf_token'   => $this->getCsrfToken($request),
+            ]);
+        }
 
         if ($firstName === '') {
             $firstName = null;
@@ -254,7 +259,7 @@ class UserAdminController extends AbstractAdminController
         }
 
         try {
-            $user = $this->userService->updateUser($userId, $username, $email, $firstName, $lastName);
+            $user = $this->userService->updateUser($userId, $email, $enabled, $firstName, $lastName);
 
             if ($user === null) {
                 return $this->notFound($response, 'The requested user was not found.');
@@ -265,10 +270,11 @@ class UserAdminController extends AbstractAdminController
             $existingUser = $this->userService->getUserById($userId);
 
             return $this->twig->render($response, 'admin/users/edit.twig', [
-                'pageTitle'  => 'Edit User',
-                'error'      => $exception->getMessage(),
-                'user'       => $existingUser,
-                'csrf_token' => $this->getCsrfToken($request),
+                'pageTitle'    => 'Edit User',
+                'error'        => $exception->getMessage(),
+                'user'         => $existingUser,
+                'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
+                'csrf_token'   => $this->getCsrfToken($request),
             ]);
         }
     }

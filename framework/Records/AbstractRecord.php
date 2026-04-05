@@ -13,11 +13,11 @@ namespace Lampfire\Records;
  */
 abstract class AbstractRecord
 {
-    /**
-     * Returns an array representation of the record.
-     *
-     * Subclasses should override this method to include all relevant properties
-     * in the returned array.
-     */
-    abstract public function toArray(): array;
+    abstract public function previous(): ?self;
+
+    abstract public function next(): ?self;
+
+    abstract public function rewind(): ?self;
+
+    abstract public function count(): ?self;
 }

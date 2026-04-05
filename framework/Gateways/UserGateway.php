@@ -43,7 +43,7 @@ class UserGateway extends AbstractDatabaseGateway
      */
     public function findAll(): array
     {
-        $sql = 'SELECT u.user_id, u.username,
+        $sql = 'SELECT u.user_id, u.username, u.enabled,
                        ud.first_name, ud.last_name, ud.email_address,
                        u.created_at, u.updated_at
                 FROM Users u
@@ -69,7 +69,7 @@ class UserGateway extends AbstractDatabaseGateway
     {
         Enforcers::enforceValidUuid($userId, 'user_id');
 
-        $sql = 'SELECT u.user_id, u.username,
+        $sql = 'SELECT u.user_id, u.username, u.enabled,
                        ud.first_name, ud.last_name, ud.email_address,
                        u.created_at, u.updated_at
                 FROM Users u
@@ -182,6 +182,36 @@ class UserGateway extends AbstractDatabaseGateway
         $success = $statement->execute([
             'user_id'       => $userId,
             'password_hash' => $passwordHash,
+        ]);
+        if ($success === false) {
+            throw new \RuntimeException('Failed to execute SQL statement.');
+        }
+
+        return $statement->rowCount() > 0;
+    }
+
+    /**
+     * Sets the enabled state for a user account.
+     *
+     * @param string $userId  The UUID of the user.
+     * @param bool   $enabled True to enable the account, false to disable it.
+     * @return bool True when the update affects a row.
+     * @throws \InvalidArgumentException When the user_id is not a valid UUID.
+     */
+    public function setEnabled(string $userId, bool $enabled): bool
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+
+        $statement = $this->pdo->prepare(
+            'UPDATE Users SET enabled = :enabled WHERE user_id = :user_id'
+        );
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare SQL statement.');
+        }
+
+        $success = $statement->execute([
+            'user_id' => $userId,
+            'enabled' => $enabled ? 1 : 0,
         ]);
         if ($success === false) {
             throw new \RuntimeException('Failed to execute SQL statement.');

@@ -50,6 +50,15 @@ abstract class AbstractController
     protected array $routeMiddleware = [];
 
     /**
+     * Convention-based route method names that must not be registered
+     * for this controller. Use this to suppress REST conventions that
+     * do not apply, such as 'delete' on resources that cannot be removed.
+     *
+     * @var array<string>
+     */
+    protected array $routeExclusions = [];
+
+    /**
      * Extracts a named route argument from the request.
      *
      * @param Request $request The incoming request.

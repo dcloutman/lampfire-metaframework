@@ -59,17 +59,18 @@ final class InitCommand extends AbstractCommand
                 return 0;
             }
 
-            $output->writeln();
-            $rootPassword = Randomizers::generatePassword(24, 48);
-            $output->warning('Generated MariaDB root password for this initialization run:');
-            $output->writeln($rootPassword);
-            $output->warning('Store this password securely. It is only shown once and is never saved to disk.');
-
-            if ($this->isDatabaseContainerRunning($projectRoot) === false) {
-                $output->writeln();
-                $output->info('Docker services are not running. Starting services...');
-                $this->startContainers($projectRoot, $rootPassword, $output);
+            if ($this->isDatabaseContainerRunning($projectRoot)) {
+                $output->warning('The database container is already running. Run project-reset before running init again.');
+                return 0;
             }
+
+            $output->writeln();
+            $rootPassword = Randomizers::generateRandomString(24, 48, ['numeric', 'lowercase', 'uppercase', 'special']);
+            $output->warning('Generated MariaDB root password for this initialization run:');
+
+            $output->writeln();
+            $output->info('Starting Docker services...');
+            $this->startContainers($projectRoot, $rootPassword, $output);
 
             $output->writeln();
             $output->info('Waiting for database to become healthy...');
@@ -106,6 +107,10 @@ final class InitCommand extends AbstractCommand
             $this->reloadWebContainer($projectRoot, $output);
 
             $this->disableProjectInitFailsafe($output);
+
+            $output->writeln('The following root password was used:');
+            $output->writeln($rootPassword);
+            $output->warning('Store this password securely. It will not be displayed again and was not saved to disk.');
 
             $output->info('Initialization complete.');
             return 0;
@@ -343,7 +348,7 @@ final class InitCommand extends AbstractCommand
             }
 
             if ($choice === 'G') {
-                $dbaPassword = Randomizers::generatePassword(24, 48);
+                $dbaPassword = Randomizers::generateRandomString(24, 48, ['numeric', 'lowercase', 'uppercase', 'special']);
 
                 $output->writeln();
                 $output->info(sprintf('Generated password for DBA user %s:', $dbaUser));
@@ -477,7 +482,7 @@ final class InitCommand extends AbstractCommand
         }
 
         if ($choice === 'G' && $isGeneratable) {
-            $generated = Randomizers::generatePassword($minLength, $maxLength);
+            $generated = Randomizers::generateRandomString($minLength, $maxLength, ['numeric', 'lowercase', 'uppercase', 'special']);
             $output->writeln();
             $output->info(sprintf('  Generated %s:', $name));
             $output->writeln();
@@ -831,7 +836,7 @@ final class InitCommand extends AbstractCommand
     {
         $compose = $this->resolveComposeCommand($projectRoot);
         $command = sprintf(
-            'LAMPFIRE_BOOTSTRAP_ROOT_PASSWORD=%s %s up -d --remove-orphans',
+            'MARIADB_ROOT_PASSWORD=%s %s up -d --remove-orphans',
             escapeshellarg($bootstrapRootPassword),
             $compose
         );
@@ -1010,14 +1015,14 @@ final class InitCommand extends AbstractCommand
     }
 
     /**
-     * Configures the MariaDB root account to use the generated password.
+     * Configures the MariaDB root account password.
      *
-     * This method assumes a reset/new environment where root currently has an
-     * empty password. It updates both root@localhost and root@% so the CLI can
-     * connect from the host during initialization.
+     * Verifies that the root account is reachable using the generated password.
+     * The password was set at container startup via MARIADB_ROOT_PASSWORD, so
+     * a successful connection confirms the environment is consistent.
      *
      * @param string $rootPassword The generated root password.
-     * @throws RuntimeException When root cannot be configured.
+     * @throws RuntimeException When root cannot be reached with the given password.
      */
     private function configureRootAccountPassword(string $rootPassword): void
     {
@@ -1026,9 +1031,7 @@ final class InitCommand extends AbstractCommand
             $connection->query('SELECT 1');
         } catch (RuntimeException $exception) {
             throw new RuntimeException(
-                'Could not connect to MariaDB as root with the generated password. '
-                    . 'The database was likely already initialized with a different root password. '
-                    . 'Run project-reset and retry init. '
+                'Could not connect to MariaDB as root with the provided password. '
                     . 'Details: ' . $exception->getMessage(),
                 0,
                 $exception
