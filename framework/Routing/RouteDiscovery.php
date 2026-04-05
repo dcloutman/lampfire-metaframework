@@ -137,6 +137,7 @@ class RouteDiscovery
         $prefix          = $defaults['routePrefix'] ?? '';
         $idPattern       = $defaults['idPattern'] ?? '/{id}';
         $classMiddleware = $defaults['routeMiddleware'] ?? [];
+        $exclusions      = $defaults['routeExclusions'] ?? [];
 
         $methods = $reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC);
 
@@ -170,7 +171,8 @@ class RouteDiscovery
                 $method,
                 $prefix,
                 $classMiddleware,
-                $idPattern
+                $idPattern,
+                $exclusions
             );
         }
     }
@@ -238,9 +240,15 @@ class RouteDiscovery
         ReflectionMethod $method,
         string $prefix,
         array $classMiddleware,
-        string $idPattern
+        string $idPattern,
+        array $exclusions = []
     ): void {
         $methodName = $method->getName();
+
+        if (in_array($methodName, $exclusions, true)) {
+            return;
+        }
+
         $httpMethod = null;
         $path       = null;
 
