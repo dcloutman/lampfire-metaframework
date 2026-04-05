@@ -73,12 +73,4 @@ class DatabaseConnection
         $this->pdoInstance = null;
         return $this->getConnection();
     }
-
-    /**
-     * Returns the underlying PDO instance, if it has been created.
-     */
-    public function getPdoInstance(): ?PDO
-    {
-        return $this->pdoInstance;
-    }
 }
