@@ -3,7 +3,7 @@
 # Installs required PHP extensions, enables mod_rewrite, and
 # configures Composer for dependency management.
 
-FROM php:8.4-apache
+FROM php:8.5-rc-apache-trixie
 
 # Install system dependencies and PHP extensions.
 RUN apt-get update && apt-get install -y --no-install-recommends \
