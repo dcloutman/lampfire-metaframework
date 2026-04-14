@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Lampfire\Controllers\Api;
 
 use App\Middleware\AuthMiddleware;
+use Lampfire\Records\PermissionSetRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
@@ -27,15 +28,17 @@ class PermissionSetController extends AbstractRestController
      * @var PermissionSetService The permission set business logic service.
      */
     private PermissionSetService $permissionSetService;
+    private PermissionSetRecord $permissionSetRecord;
 
     /**
      * Creates the permission set controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
      */
-    public function __construct(PermissionSetService $permissionSetService)
+    public function __construct(PermissionSetService $permissionSetService, PermissionSetRecord $permissionSetRecord)
     {
         $this->permissionSetService = $permissionSetService;
+        $this->permissionSetRecord = $permissionSetRecord;
     }
 
     /**
@@ -47,7 +50,7 @@ class PermissionSetController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
-        $sets = $this->permissionSetService->getAllSets();
+        $sets = $this->permissionSetRecord->findAll();
 
         return $this->prepareJsonResponse($response, ['data' => $sets]);
     }
@@ -67,11 +70,20 @@ class PermissionSetController extends AbstractRestController
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The id parameter must be a valid UUID v4.');
         }
 
-        $set = $this->permissionSetService->getSetById($setId);
+        $setRecord = $this->permissionSetRecord->getByPrimaryKey($setId);
 
-        if ($set === null) {
+        if ($setRecord === null) {
             return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested permission set does not exist.');
         }
+
+        $set = [
+            'permission_set_id' => $setRecord->getPermissionSetId(),
+            'permission_set_token' => $setRecord->getPermissionSetToken(),
+            'title' => $setRecord->getTitle(),
+            'notes' => $setRecord->getNotes(),
+            'created_at' => $setRecord->getCreatedAt(),
+            'updated_at' => $setRecord->getUpdatedAt(),
+        ];
 
         return $this->prepareJsonResponse($response, ['data' => $set]);
     }

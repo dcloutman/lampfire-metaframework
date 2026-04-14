@@ -87,6 +87,139 @@ Services live in `app/src/lib/Services/`. They contain business logic and coordi
 1. Extend `Lampfire\Services\AbstractService`.
 2. Inject gateways through the constructor.
 
+### Adding a Record
+
+Records are typed wrappers around database rows. A record class defines the schema contract for one table, controls field visibility and mutability, and provides cursor-style result navigation through `next()`, `previous()`, `rewind()`, and `count()`.
+
+Userland developers must not add or modify records in `framework/Records/`. If your fork introduces userland records, create them under `app/src/lib/Records/`.
+
+#### Step 1: Create the record class
+
+1. Extend `Lampfire\Records\AbstractDatabaseRecord`.
+2. Add `use Lampfire\Records\DatabaseRecordConstructorTrait;`.
+3. Define these protected properties.
+
+| Property | Required | Purpose |
+|---|---|---|
+| `$query` | Yes | The active query used by cursor methods and `getByPrimaryKey()`. |
+| `$primaryKeys` | Yes | Primary key columns in declaration order. |
+| `$fields` | Yes | Allowed database field names for getters, setters, create, and update. |
+| `$hiddenFields` | Optional | Fields blocked from dynamic getters and setters. |
+| `$readOnlyFields` | Optional | Fields blocked from dynamic setters, create, and update. |
+
+> The hidden-field property is currently named `$hiddenFields` in the framework base class. Use that exact property name.
+
+#### Step 2: Define the query lifecycle
+
+The cursor methods require an initialized statement. You initialize it by assigning `$query` and executing it through public methods that call `executeQuery()` in the base class.
+
+Typical sequence:
+
+1. Assign a SQL statement to `$query`.
+2. Call a method that executes the statement.
+3. Iterate results with `next()` or call `rewind()`.
+4. Call `count()` only when you want to exhaust the statement and count all rows.
+
+#### Step 3: Use dynamic field accessors safely
+
+The base class maps camelCase accessors to snake_case fields automatically.
+
+- `getUserId()` maps to `user_id`.
+- `setPermissionToken()` maps to `permission_token`.
+
+The record throws a `LogicException` when code tries to read hidden fields or write read-only fields.
+
+#### Example record class
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace Lampfire\Records;
+
+class WidgetRecord extends AbstractDatabaseRecord
+{
+    use DatabaseRecordConstructorTrait;
+
+    protected ?string $query = null;
+    protected array $primaryKeys = ['widget_id'];
+    protected array $fields = [
+        'widget_id',
+        'name',
+        'enabled',
+        'created_at',
+        'updated_at',
+    ];
+
+    protected array $hiddenFields = [];
+    protected array $readOnlyFields = [
+        'widget_id',
+        'created_at',
+        'updated_at',
+    ];
+
+    public function findAll(): self
+    {
+        $this->query = 'SELECT widget_id, name, enabled, created_at, updated_at FROM Widgets ORDER BY name ASC';
+        $this->executeQuery();
+
+        return $this;
+    }
+}
+```
+
+#### Example usage in a service
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use Lampfire\Records\WidgetRecord;
+
+class WidgetService
+{
+    public function __construct(private readonly WidgetRecord $widgetRecord)
+    {
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listWidgets(): array
+    {
+        $items = [];
+
+        $cursor = $this->widgetRecord->findAll();
+        $current = $cursor->rewind();
+
+        while ($current !== null) {
+            $items[] = [
+                'widget_id' => $current->getWidgetId(),
+                'name' => $current->getName(),
+                'enabled' => $current->getEnabled(),
+            ];
+
+            $current = $cursor->next();
+        }
+
+        return $items;
+    }
+}
+```
+
+#### Record pattern rules
+
+- Keep SQL parameterized. Do not interpolate user input into query strings.
+- Keep business rules in services. Record classes are for persistence behavior and record-state navigation.
+- Keep table naming conventional. `AbstractDatabaseRecord` resolves table names as `<ClassNameWithoutRecord>s` for `create`, `update`, and `delete`.
+- Keep primary key definitions complete and ordered. Composite keys must include every key column.
+- Keep field lists explicit and accurate. Unknown fields are rejected.
+
+
 ### Adding a Database Migration
 
 Migration files live in `app/migrations/`. The `php cli.php init` command runs them in alphabetical order. Use a zero-padded numeric prefix (for example, `00002-add-widgets-table.sql`). Write migrations to be idempotent where possible.

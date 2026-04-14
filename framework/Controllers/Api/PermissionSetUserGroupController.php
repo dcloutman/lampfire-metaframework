@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Lampfire\Controllers\Api;
 
 use App\Middleware\AuthMiddleware;
+use Lampfire\Records\PermissionSetUserGroupRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
@@ -28,15 +29,20 @@ class PermissionSetUserGroupController extends AbstractRestController
      * @var PermissionSetService The permission set business logic service.
      */
     private PermissionSetService $permissionSetService;
+    private PermissionSetUserGroupRecord $permissionSetUserGroupRecord;
 
     /**
      * Creates the permission set user group controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
      */
-    public function __construct(PermissionSetService $permissionSetService)
+    public function __construct(
+        PermissionSetService $permissionSetService,
+        PermissionSetUserGroupRecord $permissionSetUserGroupRecord
+    )
     {
         $this->permissionSetService = $permissionSetService;
+        $this->permissionSetUserGroupRecord = $permissionSetUserGroupRecord;
     }
 
     /**
@@ -55,29 +61,22 @@ class PermissionSetUserGroupController extends AbstractRestController
         $userGroupId = $params['user_group_id'] ?? null;
 
         if (is_string($permissionSetId) && $this->isValidUuid($permissionSetId)) {
-            $members = $this->permissionSetService->getGroupMembersBySetId($permissionSetId);
+            $members = $this->permissionSetUserGroupRecord->findBySetId($permissionSetId);
 
             return $this->prepareJsonResponse($response, ['data' => $members]);
         }
 
         if (is_string($userGroupId) && $this->isValidUuid($userGroupId)) {
-            // The service does not currently expose a findByGroupId method, but
-            // the gateway does. For now, filter via the set id approach.
-            // This placeholder returns an error until a dedicated service
-            // method is added.
-            return $this->prepareJsonErrorResponse(
-                $response,
-                400,
-                'Bad Request',
-                'Filtering by user_group_id is not yet supported. Use permission_set_id instead.'
-            );
+            $members = $this->permissionSetUserGroupRecord->findByGroupId($userGroupId);
+
+            return $this->prepareJsonResponse($response, ['data' => $members]);
         }
 
         return $this->prepareJsonErrorResponse(
             $response,
             400,
             'Bad Request',
-            'A valid permission_set_id query parameter is required.'
+            'A valid permission_set_id or user_group_id query parameter is required.'
         );
     }
 
@@ -97,11 +96,22 @@ class PermissionSetUserGroupController extends AbstractRestController
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'Both path parameters must be valid UUID v4 values.');
         }
 
-        $member = $this->permissionSetService->getSetGroupMember($userGroupId, $permissionSetId);
+        $record = $this->permissionSetUserGroupRecord->getByPrimaryKey($userGroupId, $permissionSetId);
 
-        if ($member === null) {
+        if ($record === null) {
             return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested membership does not exist.');
         }
+
+        $member = [
+            'user_group_id' => $record->getUserGroupId(),
+            'permission_set_id' => $record->getPermissionSetId(),
+            'access_granted' => $record->getAccessGranted(),
+            'access_expiry' => $record->getAccessExpiry(),
+            'has_access' => $record->getHasAccess(),
+            'notes' => $record->getNotes(),
+            'created_at' => $record->getCreatedAt(),
+            'updated_at' => $record->getUpdatedAt(),
+        ];
 
         return $this->prepareJsonResponse($response, ['data' => $member]);
     }

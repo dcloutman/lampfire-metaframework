@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Lampfire\Controllers\Api;
 
 use App\Middleware\AuthMiddleware;
+use Lampfire\Records\PermissionSetMemberRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
@@ -28,15 +29,20 @@ class PermissionSetMemberController extends AbstractRestController
      * @var PermissionSetService The permission set business logic service.
      */
     private PermissionSetService $permissionSetService;
+    private PermissionSetMemberRecord $permissionSetMemberRecord;
 
     /**
      * Creates the permission set member controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
      */
-    public function __construct(PermissionSetService $permissionSetService)
+    public function __construct(
+        PermissionSetService $permissionSetService,
+        PermissionSetMemberRecord $permissionSetMemberRecord
+    )
     {
         $this->permissionSetService = $permissionSetService;
+        $this->permissionSetMemberRecord = $permissionSetMemberRecord;
     }
 
     /**
@@ -55,15 +61,13 @@ class PermissionSetMemberController extends AbstractRestController
         $userId = $params['user_id'] ?? null;
 
         if (is_string($setId) && $this->isValidUuid($setId)) {
-            $members = $this->permissionSetService->getMembersBySetId($setId);
+            $members = $this->permissionSetMemberRecord->findBySetId($setId);
 
             return $this->prepareJsonResponse($response, ['data' => $members]);
         }
 
         if (is_string($userId) && $this->isValidUuid($userId)) {
-            // Retrieve all permission set memberships for a particular user.
-            // This delegates through the service which validates the UUID.
-            $members = $this->permissionSetService->getMembersBySetId($userId);
+            $members = $this->permissionSetMemberRecord->findByUserId($userId);
 
             return $this->prepareJsonResponse($response, ['data' => $members]);
         }
@@ -92,11 +96,22 @@ class PermissionSetMemberController extends AbstractRestController
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'Both path parameters must be valid UUID v4 values.');
         }
 
-        $member = $this->permissionSetService->getSetMember($setId, $userId);
+        $record = $this->permissionSetMemberRecord->getByPrimaryKey($setId, $userId);
 
-        if ($member === null) {
+        if ($record === null) {
             return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested membership does not exist.');
         }
+
+        $member = [
+            'permission_set_id' => $record->getPermissionSetId(),
+            'user_id' => $record->getUserId(),
+            'access_granted' => $record->getAccessGranted(),
+            'access_expiry' => $record->getAccessExpiry(),
+            'has_access' => $record->getHasAccess(),
+            'notes' => $record->getNotes(),
+            'created_at' => $record->getCreatedAt(),
+            'updated_at' => $record->getUpdatedAt(),
+        ];
 
         return $this->prepareJsonResponse($response, ['data' => $member]);
     }

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Lampfire\Controllers\Api;
 
 use App\Middleware\AuthMiddleware;
+use Lampfire\Records\PermissionSetPermissionRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
@@ -28,15 +29,20 @@ class PermissionSetPermissionController extends AbstractRestController
      * @var PermissionSetService The permission set business logic service.
      */
     private PermissionSetService $permissionSetService;
+    private PermissionSetPermissionRecord $permissionSetPermissionRecord;
 
     /**
      * Creates the permission-set-permission controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
      */
-    public function __construct(PermissionSetService $permissionSetService)
+    public function __construct(
+        PermissionSetService $permissionSetService,
+        PermissionSetPermissionRecord $permissionSetPermissionRecord
+    )
     {
         $this->permissionSetService = $permissionSetService;
+        $this->permissionSetPermissionRecord = $permissionSetPermissionRecord;
     }
 
     /**
@@ -62,7 +68,7 @@ class PermissionSetPermissionController extends AbstractRestController
             );
         }
 
-        $associations = $this->permissionSetService->getPermissionsBySetId($setId);
+        $associations = $this->permissionSetPermissionRecord->findBySetId($setId);
 
         return $this->prepareJsonResponse($response, ['data' => $associations]);
     }
@@ -83,11 +89,19 @@ class PermissionSetPermissionController extends AbstractRestController
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'Both path parameters must be valid UUID v4 values.');
         }
 
-        $association = $this->permissionSetService->getSetPermission($setId, $permissionId);
+        $record = $this->permissionSetPermissionRecord->getByPrimaryKey($setId, $permissionId);
 
-        if ($association === null) {
+        if ($record === null) {
             return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested association does not exist.');
         }
+
+        $association = [
+            'permission_set_id' => $record->getPermissionSetId(),
+            'permission_id' => $record->getPermissionId(),
+            'notes' => $record->getNotes(),
+            'created_at' => $record->getCreatedAt(),
+            'updated_at' => $record->getUpdatedAt(),
+        ];
 
         return $this->prepareJsonResponse($response, ['data' => $association]);
     }

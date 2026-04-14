@@ -5,41 +5,44 @@ declare(strict_types=1);
 /**
  * Business logic service for user management.
  *
- * Coordinates between the Users table (credentials) and the UserData
- * table (PII) to provide a unified interface for user CRUD operations.
- * All read operations use the UserGateway's SQL JOINs to avoid N+1
- * queries. Password hashing uses Argon2id via the inherited helper.
+ * Coordinates higher-level user workflows and delegates persistence
+ * CRUD operations to records.
  */
 
 namespace Lampfire\Services;
 
+use InvalidArgumentException;
 use Lampfire\Config\SecuritySettings;
 use Lampfire\Gateways\UserDataGateway;
 use Lampfire\Gateways\UserGateway;
-use InvalidArgumentException;
+use Lampfire\Records\UserDataRecord;
+use Lampfire\Records\UserRecord;
 
 class UserService extends AbstractService
 {
-    /**
-     * @var UserGateway Gateway for the Users table.
-     */
     private UserGateway $userGateway;
-
-    /**
-     * @var UserDataGateway Gateway for the UserData table.
-     */
     private UserDataGateway $userDataGateway;
+    private UserRecord $userRecord;
+    private UserDataRecord $userDataRecord;
 
     /**
      * Creates the user service.
      *
-     * @param UserGateway     $userGateway     Gateway for the Users table.
-     * @param UserDataGateway $userDataGateway Gateway for the UserData table.
+     * @param UserGateway $userGateway Gateway for user read and authorization queries.
+     * @param UserDataGateway $userDataGateway Gateway for user profile lookup queries.
+     * @param UserRecord $userRecord Record for Users table persistence.
+     * @param UserDataRecord $userDataRecord Record for UserData table persistence.
      */
-    public function __construct(UserGateway $userGateway, UserDataGateway $userDataGateway)
-    {
+    public function __construct(
+        UserGateway $userGateway,
+        UserDataGateway $userDataGateway,
+        UserRecord $userRecord,
+        UserDataRecord $userDataRecord
+    ) {
         $this->userGateway = $userGateway;
         $this->userDataGateway = $userDataGateway;
+        $this->userRecord = $userRecord;
+        $this->userDataRecord = $userDataRecord;
     }
 
     /**
@@ -99,13 +102,29 @@ class UserService extends AbstractService
             throw new InvalidArgumentException('The email address is already registered.');
         }
 
-        $userId       = $this->generateUuid();
+        $userId = $this->generateUuid();
         $passwordHash = $this->hashPassword($password);
 
-        $this->userGateway->insert($userId, $username, $passwordHash);
-        $this->userDataGateway->insert($userId, $emailAddress, $firstName, $lastName);
+        $this->userRecord->create([
+            'user_id' => $userId,
+            'username' => $username,
+            'password_hash' => $passwordHash,
+            'enabled' => 1,
+        ]);
 
-        return $this->userGateway->findById($userId);
+        $this->userDataRecord->create([
+            'user_id' => $userId,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email_address' => $emailAddress,
+        ]);
+
+        $created = $this->userGateway->findById($userId);
+        if ($created === null) {
+            throw new \RuntimeException('The user record could not be loaded after creation.');
+        }
+
+        return $created;
     }
 
     /**
@@ -141,14 +160,26 @@ class UserService extends AbstractService
             throw new InvalidArgumentException('The email address is already registered.');
         }
 
-        $this->userGateway->setEnabled($userId, $enabled);
+        $this->userRecord->update([
+            'user_id' => $userId,
+            'enabled' => $enabled ? 1 : 0,
+        ]);
 
-        // Update or create the UserData record for PII.
-        $existingData = $this->userDataGateway->findByUserId($userId);
-        if ($existingData !== null) {
-            $this->userDataGateway->update($userId, $emailAddress, $firstName, $lastName);
+        $existingUserData = $this->userDataRecord->getByPrimaryKey($userId);
+        if ($existingUserData === null) {
+            $this->userDataRecord->create([
+                'user_id' => $userId,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email_address' => $emailAddress,
+            ]);
         } else {
-            $this->userDataGateway->insert($userId, $emailAddress, $firstName, $lastName);
+            $this->userDataRecord->update([
+                'user_id' => $userId,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email_address' => $emailAddress,
+            ]);
         }
 
         return $this->userGateway->findById($userId);
@@ -177,7 +208,12 @@ class UserService extends AbstractService
 
         $hash = $this->hashPassword($newPassword);
 
-        return $this->userGateway->updatePasswordHash($userId, $hash);
+        $updated = $this->userRecord->update([
+            'user_id' => $userId,
+            'password_hash' => $hash,
+        ]);
+
+        return $updated->getByPrimaryKey($userId) !== null;
     }
 
     /**
