@@ -19,6 +19,7 @@ use Lampfire\Records\PermissionSetRecord;
 use Lampfire\Records\PermissionSetUserGroupRecord;
 use Lampfire\Records\UserGroupRecord;
 use Lampfire\Records\UserRecord;
+use Lampfire\Utilities\Enforcers;
 
 class PermissionSetService extends AbstractService
 {
@@ -53,8 +54,8 @@ class PermissionSetService extends AbstractService
      */
     public function createSet(string $permissionSetToken, string $title, ?string $notes = null): array
     {
-        $this->requireMinLength($permissionSetToken, 2, 'permission_set_token');
-        $this->requireMinLength($title, 2, 'title');
+        Enforcers::enforceMinLength($permissionSetToken, 2, 'permission_set_token');
+        Enforcers::enforceMinLength($title, 2, 'title');
 
         if ($this->permissionSetRecord->tokenExists($permissionSetToken)) {
             throw new InvalidArgumentException('The permission set token is already in use.');
@@ -79,9 +80,9 @@ class PermissionSetService extends AbstractService
         string $title,
         ?string $notes = null
     ): ?array {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireMinLength($permissionSetToken, 2, 'permission_set_token');
-        $this->requireMinLength($title, 2, 'title');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceMinLength($permissionSetToken, 2, 'permission_set_token');
+        Enforcers::enforceMinLength($title, 2, 'title');
 
         $existing = $this->permissionSetRecord->getByPrimaryKey($permissionSetId);
         if ($existing === null) {
@@ -109,7 +110,7 @@ class PermissionSetService extends AbstractService
 
     public function deleteSet(string $permissionSetId): bool
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $existing = $this->permissionSetRecord->getByPrimaryKey($permissionSetId);
         if ($existing === null) {
@@ -127,8 +128,8 @@ class PermissionSetService extends AbstractService
         string $permissionId,
         ?string $notes = null
     ): array {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         if ($this->permissionSetRecord->getByPrimaryKey($permissionSetId) === null) {
             throw new InvalidArgumentException('The specified permission set does not exist.');
@@ -155,8 +156,8 @@ class PermissionSetService extends AbstractService
         string $permissionId,
         ?string $notes = null
     ): ?array {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $existing = $this->permissionSetPermissionRecord->getByPrimaryKey($permissionSetId, $permissionId);
         if ($existing === null) {
@@ -179,8 +180,8 @@ class PermissionSetService extends AbstractService
 
     public function removePermissionFromSet(string $permissionSetId, string $permissionId): bool
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $existing = $this->permissionSetPermissionRecord->getByPrimaryKey($permissionSetId, $permissionId);
         if ($existing === null) {
@@ -201,8 +202,8 @@ class PermissionSetService extends AbstractService
         bool $hasAccess,
         ?string $notes = null
     ): array {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         if ($this->permissionSetRecord->getByPrimaryKey($permissionSetId) === null) {
             throw new InvalidArgumentException('The specified permission set does not exist.');
@@ -235,8 +236,8 @@ class PermissionSetService extends AbstractService
         bool $hasAccess,
         ?string $notes = null
     ): ?array {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $existing = $this->permissionSetMemberRecord->getByPrimaryKey($permissionSetId, $userId);
         if ($existing === null) {
@@ -262,8 +263,8 @@ class PermissionSetService extends AbstractService
 
     public function removeMemberFromSet(string $permissionSetId, string $userId): bool
     {
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         $existing = $this->permissionSetMemberRecord->getByPrimaryKey($permissionSetId, $userId);
         if ($existing === null) {
@@ -284,8 +285,8 @@ class PermissionSetService extends AbstractService
         bool $hasAccess,
         ?string $notes = null
     ): array {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         if ($this->userGroupRecord->getByPrimaryKey($userGroupId) === null) {
             throw new InvalidArgumentException('The specified user group does not exist.');
@@ -318,8 +319,8 @@ class PermissionSetService extends AbstractService
         bool $hasAccess,
         ?string $notes = null
     ): ?array {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $existing = $this->permissionSetUserGroupRecord->getByPrimaryKey($userGroupId, $permissionSetId);
         if ($existing === null) {
@@ -345,8 +346,8 @@ class PermissionSetService extends AbstractService
 
     public function removeGroupFromSet(string $userGroupId, string $permissionSetId): bool
     {
-        $this->requireValidUuid($userGroupId, 'user_group_id');
-        $this->requireValidUuid($permissionSetId, 'permission_set_id');
+        Enforcers::enforceValidUuid($userGroupId, 'user_group_id');
+        Enforcers::enforceValidUuid($permissionSetId, 'permission_set_id');
 
         $existing = $this->permissionSetUserGroupRecord->getByPrimaryKey($userGroupId, $permissionSetId);
         if ($existing === null) {

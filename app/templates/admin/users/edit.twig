@@ -1,4 +1,4 @@
-{# Form to edit an existing user record. #}
+{# Unified edit page for an existing user record. #}
 {% extends "admin/layout.twig" %}
 
 {% block admin_content %}
@@ -6,51 +6,54 @@
     <h1>Edit User</h1>
 </header>
 
+{% if error is defined and error is not null %}
+<div class="alert alert-error">
+    {{ error }}
+</div>
+{% endif %}
+
 <form method="post" action="/admin/users/{{ user.user_id }}" class="admin-form">
     <input type="hidden" name="_METHOD" value="PUT" />
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
 
-    <div class="form-group">
-        <label class="form-label">Username</label>
+    <div>
+        <label>Username</label>
         <p class="form-static">{{ user.username }}</p>
     </div>
 
-    <div class="form-group">
-        <label for="first_name" class="form-label">First Name</label>
+    <div>
+        <label for="first_name">First Name</label>
         <input
             type="text"
             id="first_name"
             name="first_name"
-            class="form-input"
             value="{{ user.first_name | default('') }}"
         />
     </div>
 
-    <div class="form-group">
-        <label for="last_name" class="form-label">Last Name</label>
+    <div>
+        <label for="last_name">Last Name</label>
         <input
             type="text"
             id="last_name"
             name="last_name"
-            class="form-input"
             value="{{ user.last_name | default('') }}"
         />
     </div>
 
-    <div class="form-group">
-        <label for="email_address" class="form-label">Email Address</label>
+    <div>
+        <label for="email_address">Email Address</label>
         <input
             type="email"
             id="email_address"
             name="email_address"
-            class="form-input"
             required
             value="{{ user.email_address | default('') }}"
         />
     </div>
 
-    <div class="form-group">
-        <label class="form-label">Account Status</label>
+    <div>
+        <label>Account Status</label>
         <div class="radio-group">
             <label>
                 <input type="radio" name="enabled" value="1" {% if user.enabled %}checked{% endif %} />
@@ -65,9 +68,136 @@
         </div>
     </div>
 
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-        <a href="/admin/users/{{ user.user_id }}" class="btn btn-secondary">Cancel</a>
-    </div>
+    <footer>
+        <button type="submit">Save Changes</button>
+        <a href="/admin/users">Cancel</a>
+    </footer>
 </form>
+
+<section class="detail-section">
+    <h2>Reset Password</h2>
+
+    {% if password_error is defined and password_error is not null %}
+    <div class="alert alert-error">
+        {{ password_error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/admin/users/{{ user.user_id }}" class="admin-form">
+        <input type="hidden" name="_METHOD" value="PUT" />
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+        <div>
+            <label for="new_password">New Password</label>
+            <input
+                type="password"
+                id="new_password"
+                name="new_password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+            />
+        </div>
+
+        <div>
+            <label for="new_password_confirm">Confirm New Password</label>
+            <input
+                type="password"
+                id="new_password_confirm"
+                name="new_password_confirm"
+                required
+                minlength="8"
+                autocomplete="new-password"
+            />
+        </div>
+
+        <footer>
+            <button type="submit">Reset Password</button>
+        </footer>
+    </form>
+</section>
+
+<section class="detail-section">
+    <h2>User Group Memberships</h2>
+
+    {% if group_error is defined and group_error is not null %}
+    <div class="alert alert-error">
+        {{ group_error }}
+    </div>
+    {% endif %}
+
+    {% if group_memberships is defined and group_memberships|length > 0 %}
+    <div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Group Name</th>
+                <th>Access</th>
+                <th>Granted</th>
+                <th>Expires</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for membership in group_memberships %}
+            <tr>
+                <td>{{ membership.group_name }}</td>
+                <td>{{ membership.has_access ? 'Active' : 'Disabled' }}</td>
+                <td>{{ membership.access_granted }}</td>
+                <td>{{ membership.access_expiry }}</td>
+                <td class="actions">
+                    {% if membership.can_remove %}
+                    <form method="post" action="/admin/users/{{ user.user_id }}/groups/{{ membership.user_group_id }}/update" class="membership-update-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <input type="text" name="access_expiry" value="{{ membership.access_expiry }}" required />
+                        <select name="has_access" required>
+                            <option value="1" {% if membership.has_access %}selected{% endif %}>Active</option>
+                            <option value="0" {% if not membership.has_access %}selected{% endif %}>Disabled</option>
+                        </select>
+                        <button type="submit">Update</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ user.user_id }}/groups/{{ membership.user_group_id }}/remove" onsubmit="return confirm('Disable this user membership and keep its audit record?');" class="membership-disable-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <button type="submit">Disable</button>
+                    </form>
+                    {% else %}
+                    <span>Superadmin only</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="membership-note">Expiry values must use UTC format YYYY-MM-DD HH:MM:SS.</p>
+    {% else %}
+    <p>This user is not assigned to any groups.</p>
+    {% endif %}
+
+    {% if available_groups is defined and available_groups|length > 0 %}
+    <form method="post" action="/admin/users/{{ user.user_id }}/groups" class="admin-form" style="margin-top: 1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+        <div>
+            <label for="user_group_id">Add User To Group</label>
+            <select id="user_group_id" name="user_group_id" required>
+                <option value="">Select a user group</option>
+                {% for group in available_groups %}
+                <option value="{{ group.user_group_id }}">{{ group.group_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <footer>
+            <button type="submit">Add To Group</button>
+        </footer>
+    </form>
+    {% else %}
+    <p>There are no additional groups available to assign.</p>
+    {% endif %}
+</section>
+
+<div class="back-link">
+    <a href="/admin/users">Back to user list</a>
+</div>
 {% endblock %}

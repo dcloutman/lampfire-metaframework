@@ -477,8 +477,13 @@ abstract class AbstractDatabaseRecord extends AbstractRecord
                 throw new \LogicException('Field ' . $field . ' is read-only for ' . static::class);
             }
 
-            $updateFields[] = $field;
             $parameters[$field] = $value;
+
+            if (in_array($field, $this->primaryKeys, true)) {
+                continue;
+            }
+
+            $updateFields[] = $field;
         }
 
         if (count($updateFields) === 0) {
@@ -495,8 +500,8 @@ abstract class AbstractDatabaseRecord extends AbstractRecord
             }
         }
 
-        $setClauses = implode(', ', array_map(fn($f) => $f . ' = :' . $f, $updateFields));
-        $whereClauses = implode(' AND ', array_map(fn($pk) => $pk . ' = :' . $pk, $this->primaryKeys));
+        $setClauses = implode(', ', array_map(fn($f) => $f . ' = :set_' . $f, $updateFields));
+        $whereClauses = implode(' AND ', array_map(fn($pk) => $pk . ' = :where_' . $pk, $this->primaryKeys));
 
         $query = 'UPDATE ' . $this->resolveTableName() . ' SET ' . $setClauses . ' WHERE ' . $whereClauses;
         $this->query = $query;
@@ -506,7 +511,17 @@ abstract class AbstractDatabaseRecord extends AbstractRecord
             throw new \RuntimeException('Failed to prepare update statement for ' . static::class);
         }
 
-        $success = $statement->execute($parameters);
+        $statementParameters = [];
+
+        foreach ($updateFields as $field) {
+            $statementParameters['set_' . $field] = $parameters[$field];
+        }
+
+        foreach ($this->primaryKeys as $primaryKey) {
+            $statementParameters['where_' . $primaryKey] = $parameters[$primaryKey];
+        }
+
+        $success = $statement->execute($statementParameters);
         if ($success !== true) {
             throw new \RuntimeException('Failed to execute update statement for ' . static::class);
         }

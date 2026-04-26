@@ -28,7 +28,7 @@ class Enforcers
     }
 
     /**
-     * Enforces that a value is a valid UUID v4. Throws an exception if the value is not a valid UUID.
+     * Enforces that a value is a valid UUID.
      *
      * @param string $value The value to check.
      * @param string $name The name of the value, used in the exception message.
@@ -38,8 +38,38 @@ class Enforcers
     {
         if (Validators::isValidUuid($value) === false) {
             throw new InvalidArgumentException(
-                sprintf('The %s field must be a valid UUID v4.', $name)
+                sprintf('The %s field must be a valid UUID.', $name)
             );
+        }
+    }
+
+    /**
+     * Enforces that a trimmed string meets a minimum length.
+     *
+     * @param string $value The value to check.
+     * @param int $minLength The minimum accepted character length.
+     * @param string $name The name of the value, used in the exception message.
+     * @throws InvalidArgumentException If the value is too short.
+     */
+    public static function enforceMinLength(string $value, int $minLength, string $name): void
+    {
+        if (strlen(trim($value)) < $minLength) {
+            throw new InvalidArgumentException(
+                sprintf('The %s must be at least %d characters long.', $name, $minLength)
+            );
+        }
+    }
+
+    /**
+     * Enforces that a value is a valid email address.
+     *
+     * @param string $emailAddress The email address to check.
+     * @throws InvalidArgumentException If the value is not a valid email address.
+     */
+    public static function enforceValidEmail(string $emailAddress): void
+    {
+        if (filter_var($emailAddress, FILTER_VALIDATE_EMAIL) === false) {
+            throw new InvalidArgumentException('The email address is not valid.');
         }
     }
 }

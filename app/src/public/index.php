@@ -35,15 +35,17 @@ $appSettings = $container->get(AppSettings::class);
 AppFactory::setContainer($container);
 $app = AppFactory::create();
 
-// Register the body parsing middleware so POST/PUT payloads are decoded.
-$app->addBodyParsingMiddleware();
+// Slim executes middleware in LIFO order. Add routing first so it runs
+// after body parsing and method override on incoming requests.
+$app->addRoutingMiddleware();
 
 // Allow HTML forms to override the HTTP method with a hidden _METHOD field.
-// This enables PUT and DELETE submissions from browser forms.
+// This must run before routing so overridden verbs can match routes.
 $app->add(new MethodOverrideMiddleware());
 
-// Add the routing middleware so RouteContext is available in controllers.
-$app->addRoutingMiddleware();
+// Register body parsing so _METHOD and form payload values are available
+// to method override and controllers.
+$app->addBodyParsingMiddleware();
 
 // Discover and register all controller routes from class properties.
 RouteDiscovery::register(

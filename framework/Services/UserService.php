@@ -17,6 +17,7 @@ use Lampfire\Gateways\UserDataGateway;
 use Lampfire\Gateways\UserGateway;
 use Lampfire\Records\UserDataRecord;
 use Lampfire\Records\UserRecord;
+use Lampfire\Utilities\Enforcers;
 
 class UserService extends AbstractService
 {
@@ -64,7 +65,7 @@ class UserService extends AbstractService
      */
     public function getUserById(string $userId): ?array
     {
-        $this->requireValidUuid($userId, 'user_id');
+        Enforcers::enforceValidUuid($userId, 'user_id');
 
         return $this->userGateway->findById($userId);
     }
@@ -91,8 +92,8 @@ class UserService extends AbstractService
         ?string $firstName = null,
         ?string $lastName = null
     ): array {
-        $this->requireMinLength($username, SecuritySettings::MINIMUM_USERNAME_LENGTH, 'username');
-        $this->requireMinLength($password, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
+        Enforcers::enforceMinLength($username, SecuritySettings::MINIMUM_USERNAME_LENGTH, 'username');
+        Enforcers::enforceMinLength($password, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
 
         if ($this->userGateway->usernameExists($username)) {
             throw new InvalidArgumentException('The username is already taken.');
@@ -103,14 +104,7 @@ class UserService extends AbstractService
         }
 
         $userId = $this->generateUuid();
-        $passwordHash = $this->hashPassword($password);
-
-        $this->userRecord->create([
-            'user_id' => $userId,
-            'username' => $username,
-            'password_hash' => $passwordHash,
-            'enabled' => 1,
-        ]);
+        $this->userGateway->insert($userId, $username, $this->hashPassword($password));
 
         $this->userDataRecord->create([
             'user_id' => $userId,
@@ -148,8 +142,8 @@ class UserService extends AbstractService
         ?string $firstName = null,
         ?string $lastName = null
     ): ?array {
-        $this->requireValidUuid($userId, 'user_id');
-        $this->requireValidEmail($emailAddress);
+        Enforcers::enforceValidUuid($userId, 'user_id');
+        Enforcers::enforceValidEmail($emailAddress);
 
         $existingUser = $this->userGateway->findById($userId);
         if ($existingUser === null) {
@@ -198,8 +192,21 @@ class UserService extends AbstractService
      */
     public function resetPassword(string $userId, string $newPassword): bool
     {
-        $this->requireValidUuid($userId, 'user_id');
-        $this->requireMinLength($newPassword, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
+        return $this->setPassword($userId, $newPassword);
+    }
+
+    /**
+     * Sets a user's password using framework business logic.
+     *
+     * @param string $userId      The UUID of the user.
+     * @param string $newPassword The new plaintext password.
+     * @return bool True when the password hash was updated.
+     * @throws InvalidArgumentException When validation fails or the user does not exist.
+     */
+    public function setPassword(string $userId, string $newPassword): bool
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+        Enforcers::enforceMinLength($newPassword, SecuritySettings::MINIMUM_PASSWORD_LENGTH, 'password');
 
         $existingUser = $this->userGateway->findById($userId);
         if ($existingUser === null) {
@@ -208,12 +215,52 @@ class UserService extends AbstractService
 
         $hash = $this->hashPassword($newPassword);
 
-        $updated = $this->userRecord->update([
-            'user_id' => $userId,
-            'password_hash' => $hash,
-        ]);
+        return $this->userGateway->updatePasswordHash($userId, $hash);
+    }
 
-        return $updated->getByPrimaryKey($userId) !== null;
+    /**
+     * Validates a plaintext password for a given user.
+     *
+     * @param string $userId   The UUID of the user.
+     * @param string $password The plaintext password candidate.
+     * @return bool True when the password matches.
+     * @throws InvalidArgumentException When the user identifier is invalid.
+     */
+    public function validatePassword(string $userId, string $password): bool
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+
+        $user = $this->userGateway->findByIdWithHash($userId);
+        if ($user === null) {
+            return false;
+        }
+
+        $hash = $user['password_hash'] ?? null;
+        if (is_string($hash) === false || $hash === '') {
+            return false;
+        }
+
+        return password_verify($password, $hash);
+    }
+
+    /**
+     * Changes a user's password after validating the current password.
+     *
+     * @param string $userId          The UUID of the user.
+     * @param string $currentPassword The current plaintext password.
+     * @param string $newPassword     The new plaintext password.
+     * @return bool True when the password was changed.
+     * @throws InvalidArgumentException When validation fails.
+     */
+    public function changePassword(string $userId, string $currentPassword, string $newPassword): bool
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+
+        if ($this->validatePassword($userId, $currentPassword) === false) {
+            throw new InvalidArgumentException('The current password is incorrect.');
+        }
+
+        return $this->setPassword($userId, $newPassword);
     }
 
     /**
@@ -239,6 +286,17 @@ class UserService extends AbstractService
         }
 
         return $this->userGateway->userHasPermissionToken($authUserId, $permissionToken);
+    }
+
+    /**
+     * Returns true when the given username matches the active superadmin username.
+     *
+     * @param string $username The username to test.
+     * @return bool True when the username matches the configured superadmin.
+     */
+    public function isSuperadminUsername(string $username): bool
+    {
+        return $this->isSuperadmin($username);
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Middleware\AuthMiddleware;
 use App\Services\UserGroupService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
+use Lampfire\Services\UserService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -30,13 +31,20 @@ class UserGroupMembershipController extends AbstractRestController
     private UserGroupService $userGroupService;
 
     /**
+     * @var UserService The user business logic service.
+     */
+    private UserService $userService;
+
+    /**
      * Creates the user group membership controller.
      *
      * @param UserGroupService $userGroupService The user group service.
+     * @param UserService      $userService      The user service.
      */
-    public function __construct(UserGroupService $userGroupService)
+    public function __construct(UserGroupService $userGroupService, UserService $userService)
     {
         $this->userGroupService = $userGroupService;
+        $this->userService = $userService;
     }
 
     /**
@@ -189,7 +197,9 @@ class UserGroupMembershipController extends AbstractRestController
     }
 
     /**
-     * DELETE /user-group-memberships/{userId}/{userGroupId} - Deletes a membership.
+     * DELETE /user-group-memberships/{userId}/{userGroupId} - Disables a membership.
+     *
+     * This endpoint performs a non-destructive disable operation.
      *
      * @param Request  $request  The incoming request.
      * @param Response $response The outgoing response.
@@ -199,14 +209,27 @@ class UserGroupMembershipController extends AbstractRestController
     {
         $userId      = $this->routeArgument($request, 'userId');
         $userGroupId = $this->routeArgument($request, 'userGroupId');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
 
         if ($this->isValidUuid($userId) === false || $this->isValidUuid($userGroupId) === false) {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'Both path parameters must be valid UUID v4 values.');
         }
 
-        $deleted = $this->userGroupService->removeMember($userId, $userGroupId);
+        if (
+            $this->userService->isSuperadminUsername($authUsername) === false
+            && $this->userGroupService->isAdministrativeGroupId($userGroupId)
+        ) {
+            return $this->prepareJsonErrorResponse(
+                $response,
+                403,
+                'Forbidden',
+                'Only the superadmin can disable users in the administrative user group.'
+            );
+        }
 
-        if ($deleted === false) {
+        $disabled = $this->userGroupService->removeMember($userId, $userGroupId);
+
+        if ($disabled === false) {
             return $this->prepareJsonErrorResponse($response, 404, 'Not Found', 'The requested membership does not exist.');
         }
 

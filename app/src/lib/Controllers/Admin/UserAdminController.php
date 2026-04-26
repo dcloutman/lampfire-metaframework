@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Admin web controller for user management.
  *
- * Handles listing, creating, viewing, editing, deleting, and password
+ * Handles listing, creating, editing, deleting, and password
  * resets for user records. All data operations are delegated to the
  * UserService. Templates are rendered server-side with Twig.
  *
@@ -16,18 +16,25 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
+use App\Middleware\AdminAuthorizationMiddleware;
 use App\Middleware\AuthMiddleware;
+use App\Services\UserGroupService;
 use Lampfire\Services\UserService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractAdminController;
+use Lampfire\Routing\Route;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
+use Throwable;
 
 class UserAdminController extends AbstractAdminController
 {
     protected string $routePrefix = '/admin/users';
-    protected array $routeMiddleware = [AuthMiddleware::class];
+    protected array $routeMiddleware = [AdminAuthorizationMiddleware::class, AuthMiddleware::class];
 
     /**
      * @var UserService The user business logic service.
@@ -35,15 +42,22 @@ class UserAdminController extends AbstractAdminController
     private UserService $userService;
 
     /**
+     * @var UserGroupService The user-group business logic service.
+     */
+    private UserGroupService $userGroupService;
+
+    /**
      * Creates the admin user controller.
      *
-     * @param UserService $userService The user business logic service.
-     * @param Twig        $twig        The Twig view renderer.
+     * @param UserService      $userService      The user business logic service.
+     * @param UserGroupService $userGroupService The user-group business logic service.
+     * @param Twig             $twig             The Twig view renderer.
      */
-    public function __construct(UserService $userService, Twig $twig)
+    public function __construct(UserService $userService, UserGroupService $userGroupService, Twig $twig)
     {
         parent::__construct($twig);
         $this->userService = $userService;
+        $this->userGroupService = $userGroupService;
     }
 
     /**
@@ -59,36 +73,36 @@ class UserAdminController extends AbstractAdminController
     public function get(Request $request, Response $response): Response
     {
         $action = $request->getQueryParams()['action'] ?? 'list';
+        $flashData = $this->getFlashViewData($request);
 
         if ($action === 'create') {
-            return $this->twig->render($response, 'admin/users/create.twig', [
+            return $this->twig->render($response, 'admin/users/create.twig', array_merge([
                 'pageTitle'  => 'Create User',
                 'csrf_token' => $this->getCsrfToken($request),
-            ]);
+            ], $flashData));
         }
 
         $users = $this->userService->getAllUsers();
 
-        return $this->twig->render($response, 'admin/users/index.twig', [
+        return $this->twig->render($response, 'admin/users/index.twig', array_merge([
             'pageTitle'  => 'Users',
             'users'      => $users,
             'csrf_token' => $this->getCsrfToken($request),
-        ]);
+        ], $flashData));
     }
 
     /**
-     * GET /admin/users/{id} - Displays a single user record.
-     *
-     * When the query parameter action=edit is present, renders the
-     * edit form instead of the read-only detail view.
+     * GET /admin/users/{id} - Renders the user edit page.
      *
      * @param Request  $request  The incoming request.
      * @param Response $response The outgoing response.
-     * @return Response The rendered user detail or edit page.
+     * @return Response The rendered user edit page.
      */
     public function getById(Request $request, Response $response): Response
     {
         $userId = $this->routeArgument($request, 'id');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+        $flashData = $this->getFlashViewData($request);
 
         if ($this->isValidUuid($userId) === false) {
             return $this->notFound($response, 'The user identifier is not valid.');
@@ -100,22 +114,241 @@ class UserAdminController extends AbstractAdminController
             return $this->notFound($response, 'The requested user was not found.');
         }
 
-        $action = $request->getQueryParams()['action'] ?? 'show';
+        $groupData = $this->buildGroupDataForUser($userId, $authUsername);
 
-        if ($action === 'edit') {
-            return $this->twig->render($response, 'admin/users/edit.twig', [
-                'pageTitle'    => 'Edit User',
-                'user'         => $user,
-                'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
-                'csrf_token'   => $this->getCsrfToken($request),
-            ]);
+        return $this->twig->render($response, 'admin/users/edit.twig', array_merge([
+            'pageTitle'    => 'Edit User',
+            'user'         => $user,
+            'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
+            'csrf_token'   => $this->getCsrfToken($request),
+        ], $groupData, $flashData));
+    }
+
+    /**
+     * POST /admin/users/{id}/groups - Adds the user to the selected group.
+     *
+     * @param Request  $request  The incoming request.
+     * @param Response $response The outgoing response.
+     * @return Response A redirect or a re-rendered detail page on error.
+     */
+    #[Route('POST', '/{id}/groups')]
+    public function addUserToGroup(Request $request, Response $response): Response
+    {
+        $userId = $this->routeArgument($request, 'id');
+
+        if ($this->isValidUuid($userId) === false) {
+            return $this->notFound($response, 'The user identifier is not valid.');
         }
 
-        return $this->twig->render($response, 'admin/users/show.twig', [
-            'pageTitle'  => 'User Details',
-            'user'       => $user,
-            'csrf_token' => $this->getCsrfToken($request),
-        ]);
+        $user = $this->userService->getUserById($userId);
+        if ($user === null) {
+            return $this->notFound($response, 'The requested user was not found.');
+        }
+
+        $body = $request->getParsedBody();
+        $userGroupId = $this->formString($body, 'user_group_id');
+
+        if ($userGroupId === '') {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'Please select a user group to assign.'
+            );
+        }
+
+        try {
+            $accessGrantedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+            $this->userGroupService->addMember(
+                $userId,
+                $userGroupId,
+                $accessGrantedAt->format('Y-m-d H:i:s'),
+                $accessGrantedAt->add(new DateInterval('P2Y'))->format('Y-m-d H:i:s'),
+                true
+            );
+
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users/' . $userId,
+                'User group membership was created.'
+            );
+        } catch (InvalidArgumentException $exception) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                $this->mapGroupMembershipErrorMessage($exception->getMessage())
+            );
+        } catch (Throwable $exception) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'The membership could not be created. The user may already be assigned to this group.'
+            );
+        }
+    }
+
+    /**
+     * POST /admin/users/{id}/groups/{groupId}/update - Updates membership expiry or status.
+     *
+     * @param Request  $request  The incoming request.
+     * @param Response $response The outgoing response.
+     * @return Response A redirect or a re-rendered detail page on error.
+     */
+    #[Route('POST', '/{id}/groups/{groupId}/update')]
+    public function updateUserGroupMembership(Request $request, Response $response): Response
+    {
+        $userId = $this->routeArgument($request, 'id');
+        $groupId = $this->routeArgument($request, 'groupId');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->isValidUuid($userId) === false || $this->isValidUuid($groupId) === false) {
+            return $this->notFound($response, 'The requested identifiers are not valid.');
+        }
+
+        $user = $this->userService->getUserById($userId);
+        if ($user === null) {
+            return $this->notFound($response, 'The requested user was not found.');
+        }
+
+        $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
+        if ($isSuperadmin === false && $this->userGroupService->isAdministrativeGroupId($groupId)) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'Only the superadmin can modify memberships for the administrative user group.'
+            );
+        }
+
+        $existingMembership = $this->userGroupService->getMembership($userId, $groupId);
+        if ($existingMembership === null) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'The membership does not exist.'
+            );
+        }
+
+        $body = $request->getParsedBody();
+        $accessExpiry = $this->formString($body, 'access_expiry');
+        $hasAccess = $this->formString($body, 'has_access') === '1';
+
+        if ($accessExpiry === '') {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'The membership expiry is required.'
+            );
+        }
+
+        $accessGranted = is_string($existingMembership['access_granted'] ?? null)
+            ? $existingMembership['access_granted']
+            : '';
+
+        if ($accessGranted === '') {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'The membership record is missing its access grant date.'
+            );
+        }
+
+        try {
+            $updatedMembership = $this->userGroupService->updateMembership(
+                $userId,
+                $groupId,
+                $accessGranted,
+                $accessExpiry,
+                $hasAccess
+            );
+
+            if ($updatedMembership === null) {
+                return $this->renderUserEditWithGroupError(
+                    $request,
+                    $response,
+                    $user,
+                    'The membership does not exist.'
+                );
+            }
+
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users/' . $userId,
+                'User group membership was updated.'
+            );
+        } catch (InvalidArgumentException $exception) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                $this->mapGroupMembershipErrorMessage($exception->getMessage())
+            );
+        }
+    }
+
+    /**
+     * POST /admin/users/{id}/groups/{groupId}/remove - Disables access for a membership.
+     *
+     * @param Request  $request  The incoming request.
+     * @param Response $response The outgoing response.
+     * @return Response A redirect or a re-rendered detail page on error.
+     */
+    #[Route('POST', '/{id}/groups/{groupId}/remove')]
+    public function removeUserFromGroup(Request $request, Response $response): Response
+    {
+        $userId = $this->routeArgument($request, 'id');
+        $groupId = $this->routeArgument($request, 'groupId');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        if ($this->isValidUuid($userId) === false || $this->isValidUuid($groupId) === false) {
+            return $this->notFound($response, 'The requested identifiers are not valid.');
+        }
+
+        $user = $this->userService->getUserById($userId);
+        if ($user === null) {
+            return $this->notFound($response, 'The requested user was not found.');
+        }
+
+        $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
+        if ($isSuperadmin === false && $this->userGroupService->isAdministrativeGroupId($groupId)) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                'Only the superadmin can disable memberships in the administrative user group.'
+            );
+        }
+
+        try {
+            $disabled = $this->userGroupService->removeMember($userId, $groupId);
+            if ($disabled === false) {
+                return $this->renderUserEditWithGroupError(
+                    $request,
+                    $response,
+                    $user,
+                    'The membership does not exist.'
+                );
+            }
+
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users/' . $userId,
+                'User group membership was disabled.'
+            );
+        } catch (InvalidArgumentException $exception) {
+            return $this->renderUserEditWithGroupError(
+                $request,
+                $response,
+                $user,
+                $this->mapGroupMembershipErrorMessage($exception->getMessage())
+            );
+        }
     }
 
     /**
@@ -163,7 +396,11 @@ class UserAdminController extends AbstractAdminController
         try {
             $this->userService->createUser($username, $password, $email, $firstName, $lastName);
 
-            return $this->redirect($response, '/admin/users');
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users',
+                'User was created.'
+            );
         } catch (InvalidArgumentException $exception) {
             return $this->twig->render($response, 'admin/users/create.twig', [
                 'pageTitle'  => 'Create User',
@@ -241,13 +478,18 @@ class UserAdminController extends AbstractAdminController
 
         if ($userId === $authUserId && $enabled === false) {
             $existingUser = $this->userService->getUserById($userId);
+            $groupData = $this->buildGroupDataForUser(
+                $userId,
+                (string) $request->getAttribute('auth_username', '')
+            );
+
             return $this->twig->render($response, 'admin/users/edit.twig', [
                 'pageTitle'    => 'Edit User',
                 'error'        => 'You cannot disable your own account.',
                 'user'         => $existingUser,
                 'auth_user_id' => $authUserId,
                 'csrf_token'   => $this->getCsrfToken($request),
-            ]);
+            ] + $groupData);
         }
 
         if ($firstName === '') {
@@ -265,9 +507,17 @@ class UserAdminController extends AbstractAdminController
                 return $this->notFound($response, 'The requested user was not found.');
             }
 
-            return $this->redirect($response, '/admin/users/' . $userId);
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users/' . $userId,
+                'User profile changes were saved.'
+            );
         } catch (InvalidArgumentException $exception) {
             $existingUser = $this->userService->getUserById($userId);
+            $groupData = $this->buildGroupDataForUser(
+                $userId,
+                (string) $request->getAttribute('auth_username', '')
+            );
 
             return $this->twig->render($response, 'admin/users/edit.twig', [
                 'pageTitle'    => 'Edit User',
@@ -275,7 +525,7 @@ class UserAdminController extends AbstractAdminController
                 'user'         => $existingUser,
                 'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
                 'csrf_token'   => $this->getCsrfToken($request),
-            ]);
+            ] + $groupData);
         }
     }
 
@@ -286,7 +536,7 @@ class UserAdminController extends AbstractAdminController
      * @param array<string, mixed>|null $body     The parsed request body.
      * @param Request                   $request  The incoming request.
      * @param Response                  $response The outgoing response.
-     * @return Response A redirect on success or a re-rendered detail page.
+        * @return Response A redirect on success or a re-rendered edit page.
      */
     private function handlePasswordReset(
         string $userId,
@@ -303,25 +553,167 @@ class UserAdminController extends AbstractAdminController
         }
 
         if ($newPass !== $confirm) {
-            return $this->twig->render($response, 'admin/users/show.twig', [
-                'pageTitle'      => 'User Details',
+            $groupData = $this->buildGroupDataForUser(
+                $userId,
+                (string) $request->getAttribute('auth_username', '')
+            );
+
+            return $this->twig->render($response, 'admin/users/edit.twig', array_merge([
+                'pageTitle'      => 'Edit User',
                 'user'           => $user,
+                'auth_user_id'   => (string) $request->getAttribute('auth_user_id', ''),
                 'csrf_token'     => $this->getCsrfToken($request),
                 'password_error' => 'The password fields do not match.',
-            ]);
+            ], $groupData));
         }
 
         try {
             $this->userService->resetPassword($userId, $newPass);
 
-            return $this->redirect($response, '/admin/users/' . $userId);
+            return $this->redirectWithSuccess(
+                $response,
+                '/admin/users/' . $userId,
+                'Password was reset successfully.'
+            );
         } catch (InvalidArgumentException $exception) {
-            return $this->twig->render($response, 'admin/users/show.twig', [
-                'pageTitle'      => 'User Details',
+            $groupData = $this->buildGroupDataForUser(
+                $userId,
+                (string) $request->getAttribute('auth_username', '')
+            );
+
+            return $this->twig->render($response, 'admin/users/edit.twig', array_merge([
+                'pageTitle'      => 'Edit User',
                 'user'           => $user,
+                'auth_user_id'   => (string) $request->getAttribute('auth_user_id', ''),
                 'csrf_token'     => $this->getCsrfToken($request),
                 'password_error' => $exception->getMessage(),
-            ]);
+            ], $groupData));
         }
+    }
+
+    /**
+     * Builds membership and available-group lists for the user detail page.
+     *
+     * @param string $userId       The target user identifier.
+     * @param string $authUsername The authenticated username.
+     * @return array<string, mixed> Data for Twig rendering.
+     */
+    private function buildGroupDataForUser(string $userId, string $authUsername): array
+    {
+        $memberships = $this->userGroupService->getMembershipsByUserId($userId);
+        $groups = $this->userGroupService->getAllGroups();
+        $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
+        $adminGroupName = $this->userGroupService->getAdministrativeGroupName();
+
+        $groupsById = [];
+        foreach ($groups as $group) {
+            $groupId = (string) ($group['user_group_id'] ?? '');
+            if ($groupId !== '') {
+                $groupsById[$groupId] = $group;
+            }
+        }
+
+        $membershipGroupIds = [];
+        $membershipsWithGroup = [];
+
+        foreach ($memberships as $membership) {
+            $groupId = (string) ($membership['user_group_id'] ?? '');
+            if ($groupId === '') {
+                continue;
+            }
+
+            $membershipGroupIds[$groupId] = true;
+            $membership['group_name'] = $groupsById[$groupId]['group_name'] ?? $groupId;
+            $membership['group_description'] = $groupsById[$groupId]['description'] ?? null;
+            $isAdministrativeGroup = is_string($membership['group_name'])
+                && $adminGroupName !== ''
+                && $membership['group_name'] === $adminGroupName;
+            $membership['is_admin_group'] = $isAdministrativeGroup;
+            $membership['can_remove'] = $isSuperadmin || $isAdministrativeGroup === false;
+            $membershipsWithGroup[] = $membership;
+        }
+
+        $availableGroups = [];
+        foreach ($groups as $group) {
+            $groupId = (string) ($group['user_group_id'] ?? '');
+            if ($groupId === '') {
+                continue;
+            }
+
+            if (array_key_exists($groupId, $membershipGroupIds)) {
+                continue;
+            }
+
+            $availableGroups[] = $group;
+        }
+
+        return [
+            'group_memberships' => $membershipsWithGroup,
+            'available_groups'  => $availableGroups,
+            'is_superadmin'     => $isSuperadmin,
+        ];
+    }
+
+    /**
+        * Renders the user edit page with a group-management error message.
+     *
+     * @param Request               $request   The incoming request.
+     * @param Response              $response  The outgoing response.
+     * @param array<string, mixed>  $user      The user record.
+     * @param string                $errorText The message to display.
+     * @return Response The rendered edit page.
+     */
+    private function renderUserEditWithGroupError(
+        Request $request,
+        Response $response,
+        array $user,
+        string $errorText
+    ): Response {
+        $userId = (string) ($user['user_id'] ?? '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+        $groupData = $userId !== '' ? $this->buildGroupDataForUser($userId, $authUsername) : [
+            'group_memberships' => [],
+            'available_groups'  => [],
+            'is_superadmin'     => false,
+        ];
+
+        return $this->twig->render($response, 'admin/users/edit.twig', array_merge([
+            'pageTitle'    => 'Edit User',
+            'user'         => $user,
+            'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
+            'csrf_token'   => $this->getCsrfToken($request),
+            'group_error'  => $errorText,
+        ], $groupData));
+    }
+
+    /**
+     * Maps internal validation errors to end-user-friendly messages.
+     *
+     * @param string $message The internal exception message.
+     * @return string A user-facing message.
+     */
+    private function mapGroupMembershipErrorMessage(string $message): string
+    {
+        if (str_contains($message, 'valid UUID')) {
+            return 'The selected user group is invalid. Please refresh the page and try again.';
+        }
+
+        if (str_contains($message, 'does not exist')) {
+            return 'The selected user group no longer exists. Please refresh the page and try again.';
+        }
+
+        if (str_contains($message, 'UTC format')) {
+            return 'Membership dates must use UTC format YYYY-MM-DD HH:MM:SS.';
+        }
+
+        if (str_contains($message, 'later than access_granted')) {
+            return 'Membership expiry must be later than the original access grant time.';
+        }
+
+        if (str_contains($message, 'two years')) {
+            return 'User group access can be granted for a maximum of two years.';
+        }
+
+        return 'The user group membership could not be updated. Please try again.';
     }
 }

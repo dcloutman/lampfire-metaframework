@@ -23,30 +23,30 @@
             {% endif %}
 
             <form method="post" action="/" class="login-form">
-                <div class="form-group">
-                    <label for="username" class="form-label">Username</label>
+                <div>
+                    <label for="username">Username</label>
                     <input
                         type="text"
                         id="username"
                         name="username"
-                        class="form-input"
                         required
                         autocomplete="username"
                         autofocus
                     />
                 </div>
-                <div class="form-group">
-                    <label for="password" class="form-label">Password</label>
+                <div>
+                    <label for="password">Password</label>
                     <input
                         type="password"
                         id="password"
                         name="password"
-                        class="form-input"
                         required
                         autocomplete="current-password"
                     />
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                <footer>
+                    <button type="submit">Sign In</button>
+                </footer>
             </form>
         </div>
     </main>

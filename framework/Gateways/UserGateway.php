@@ -123,6 +123,39 @@ class UserGateway extends AbstractDatabaseGateway
     }
 
     /**
+     * Returns a user by identifier including the password hash.
+     *
+     * This method is intended for internal authentication workflows.
+     *
+     * @param string $userId The UUID primary key.
+     * @return array<string, mixed>|null The user row or null when not found.
+     * @throws \InvalidArgumentException When the user_id is not a valid UUID.
+     */
+    public function findByIdWithHash(string $userId): ?array
+    {
+        Enforcers::enforceValidUuid($userId, 'user_id');
+
+        $sql = 'SELECT user_id, username, password_hash,
+                       created_at, updated_at
+                FROM Users
+                WHERE user_id = :user_id';
+
+        $statement = $this->pdo->prepare($sql);
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to prepare SQL statement.');
+        }
+
+        $success = $statement->execute(['user_id' => $userId]);
+        if ($success === false) {
+            throw new \RuntimeException('Failed to execute SQL statement.');
+        }
+
+        $row = $statement->fetch();
+
+        return ($row === false) ? null : $row;
+    }
+
+    /**
      * Inserts a new user record.
      *
      * @param string $userId       The pre-generated UUID.

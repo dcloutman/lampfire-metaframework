@@ -199,7 +199,7 @@ class UserController extends AbstractRestController
     }
 
     /**
-     * A hard check against deleting users. Users can be disabled. Try that!
+     * A hard check against deleting users. Users should be disabled to preserve data integrity.
      *
      * @param Request $request
      * @param Response $response

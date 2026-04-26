@@ -11,8 +11,10 @@
         </div>
         <nav class="user-dashboard-nav">
             <span class="user-dashboard-greeting">{{ username }}</span>
-            <a href="/admin/dashboard" class="btn btn-secondary btn-small">Admin Panel</a>
-            <a href="/admin/logout" class="btn btn-secondary btn-small">Log Out</a>
+            {% if canAccessAdminPanel %}
+            <a href="/admin/dashboard">Admin Panel</a>
+            {% endif %}
+            <a href="/admin/logout">Log Out</a>
         </nav>
     </header>
 

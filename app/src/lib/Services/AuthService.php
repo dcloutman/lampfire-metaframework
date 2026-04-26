@@ -14,6 +14,7 @@ namespace App\Services;
 
 use Lampfire\Gateways\UserGateway;
 use Lampfire\Config\SecuritySettings;
+use Lampfire\Services\UserService;
 use ParagonIE\Paseto\Builder;
 use ParagonIE\Paseto\Keys\Version4\SymmetricKey;
 use ParagonIE\Paseto\Parser;
@@ -25,16 +26,19 @@ class AuthService
 {
     private SymmetricKey $symmetricKey;
     private UserGateway $userGateway;
+    private UserService $userService;
 
     /**
      * Creates the authentication service.
      *
      * @param UserGateway      $userGateway Gateway for the Users table.
+     * @param UserService      $userService Service for user business logic.
      * @param SecuritySettings $settings    Security settings containing the Paseto key.
      */
-    public function __construct(UserGateway $userGateway, SecuritySettings $settings)
+    public function __construct(UserGateway $userGateway, UserService $userService, SecuritySettings $settings)
     {
         $this->userGateway = $userGateway;
+        $this->userService = $userService;
 
         $rawKey = hex2bin($settings->getPasetoKeyHex());
         if ($rawKey === false || strlen($rawKey) !== 32) {
@@ -63,7 +67,12 @@ class AuthService
             return null;
         }
 
-        $isValid = password_verify($password, $user['password_hash']);
+        $userId = (string) ($user['user_id'] ?? '');
+        if ($userId === '') {
+            return null;
+        }
+
+        $isValid = $this->userService->validatePassword($userId, $password);
         if ($isValid === false) {
             return null;
         }

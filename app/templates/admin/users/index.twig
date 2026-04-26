@@ -4,11 +4,11 @@
 {% block admin_content %}
 <header class="page-header">
     <h1>Users</h1>
-    <a href="/admin/users?action=create" class="btn btn-primary">Create New User</a>
+    <a href="/admin/users?action=create">Create New User</a>
 </header>
 
 {% if users | length > 0 %}
-<table class="data-table">
+<table class="data">
     <thead>
         <tr>
             <th>Username</th>
@@ -29,9 +29,8 @@
             <td>{{ user.email_address | default('--') }}</td>
             <td>{{ user.created_at }}</td>
             <td>{{ user.enabled ? 'Enabled' : 'Disabled' }}</td>
-            <td class="table-actions">
-                <a href="/admin/users/{{ user.user_id }}" class="btn btn-small">View</a>
-                <a href="/admin/users/{{ user.user_id }}?action=edit" class="btn btn-small">Edit</a>
+            <td class="actions">
+                <a href="/admin/users/{{ user.user_id }}">Edit</a>
             </td>
         </tr>
         {% endfor %}

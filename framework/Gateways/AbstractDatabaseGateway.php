@@ -59,12 +59,19 @@ abstract class AbstractDatabaseGateway extends AbstractGateway
     protected function validatePrimaryKeyValues(array $primaryKeysToValues): void
     {
         $primaryKeyNames = $this->getPrimaryKeyColumns();
+        $sortedPrimaryKeyNames = $primaryKeyNames;
+        sort($sortedPrimaryKeyNames);
+
+        $providedPrimaryKeyNames = array_keys($primaryKeysToValues);
+        $sortedProvidedPrimaryKeyNames = $providedPrimaryKeyNames;
+        sort($sortedProvidedPrimaryKeyNames);
+
         if (
             count($primaryKeyNames) !== count($primaryKeysToValues) ||
-            sort($primaryKeyNames) !== sort(array_keys($primaryKeysToValues))
+            $sortedPrimaryKeyNames !== $sortedProvidedPrimaryKeyNames
         ) {
             throw new \RuntimeException(
-                'Provided primary key colums do not match the gateway\'s primary key columns.'
+                'Provided primary key columns do not match the gateway\'s primary key columns.'
             );
         }
     }

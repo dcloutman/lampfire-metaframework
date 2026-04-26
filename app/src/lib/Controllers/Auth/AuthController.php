@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Auth;
 
+use App\Middleware\AdminAuthorizationMiddleware;
 use App\Middleware\AuthMiddleware;
 use App\Services\AuthService;
 use Lampfire\Controllers\AbstractAdminController;
@@ -136,7 +137,7 @@ class AuthController extends AbstractAdminController
      * @param Response $response The outgoing response.
      * @return Response The rendered dashboard page.
      */
-    #[Route('GET', '/dashboard', middleware: [AuthMiddleware::class])]
+    #[Route('GET', '/dashboard', middleware: [AdminAuthorizationMiddleware::class, AuthMiddleware::class])]
     public function showDashboard(Request $request, Response $response): Response
     {
         $username = $request->getAttribute('auth_username');

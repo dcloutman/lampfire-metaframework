@@ -16,33 +16,21 @@ use InvalidArgumentException;
 class Validators
 {
     /**
-     * UUID v4 pattern: 8-4-4-4-12 hex digits separated by hyphens.
+     * UUID pattern: 8-4-4-4-12 hex digits separated by hyphens.
+     *
+     * Supports RFC 4122 versions 1 through 5.
      */
-    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
+    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
 
     /**
-     * Validates that a value is a well-formed UUID v4.
+     * Validates that a value is a well-formed UUID.
      *
      * @param string $value The value to test.
-     * @return bool True when the value is a valid UUID v4.
+     * @return bool True when the value is a valid UUID.
      */
     public static function isValidUuid(string $value): bool
     {
         return preg_match(self::UUID_PATTERN, $value) === 1;
-    }
-
-    /**
-     * Asserts that a value is a valid UUID v4 and throws when it is not.
-     *
-     * @param string $value     The value to validate.
-     * @param string $fieldName The field name used in the error message.
-     * @return void
-     * @deprecated This method is deprecated. Use Enforcers::enforceValidUuid instead.
-     * @throws InvalidArgumentException When the value is not a valid UUID.
-     */
-    public static function requireValidUuid(string $value, string $fieldName = 'id'): void
-    {
-        Enforcers::enforceValidUuid($value, $fieldName);
     }
 
     /**

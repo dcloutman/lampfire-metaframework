@@ -15,6 +15,7 @@ namespace App\Services;
 use Lampfire\Gateways\PermissionGateway;
 use InvalidArgumentException;
 use Lampfire\Services\AbstractService;
+use Lampfire\Utilities\Enforcers;
 
 class PermissionService extends AbstractService
 {
@@ -52,7 +53,7 @@ class PermissionService extends AbstractService
      */
     public function getPermissionById(string $permissionId): ?array
     {
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         return $this->permissionGateway->findById($permissionId);
     }
@@ -74,8 +75,8 @@ class PermissionService extends AbstractService
         string $permissionTitle,
         ?string $notes = null
     ): array {
-        $this->requireMinLength($permissionToken, 2, 'permission_token');
-        $this->requireMinLength($permissionTitle, 2, 'permission_title');
+        Enforcers::enforceMinLength($permissionToken, 2, 'permission_token');
+        Enforcers::enforceMinLength($permissionTitle, 2, 'permission_title');
 
         if ($this->permissionGateway->tokenExists($permissionToken)) {
             throw new InvalidArgumentException('The permission token is already in use.');
@@ -106,9 +107,9 @@ class PermissionService extends AbstractService
         string $permissionTitle,
         ?string $notes = null
     ): ?array {
-        $this->requireValidUuid($permissionId, 'permission_id');
-        $this->requireMinLength($permissionToken, 2, 'permission_token');
-        $this->requireMinLength($permissionTitle, 2, 'permission_title');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceMinLength($permissionToken, 2, 'permission_token');
+        Enforcers::enforceMinLength($permissionTitle, 2, 'permission_title');
 
         $existing = $this->permissionGateway->findById($permissionId);
         if ($existing === null) {
@@ -133,7 +134,7 @@ class PermissionService extends AbstractService
      */
     public function deletePermission(string $permissionId): bool
     {
-        $this->requireValidUuid($permissionId, 'permission_id');
+        Enforcers::enforceValidUuid($permissionId, 'permission_id');
 
         $existing = $this->permissionGateway->findById($permissionId);
         if ($existing === null) {
