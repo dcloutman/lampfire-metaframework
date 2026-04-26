@@ -36,6 +36,40 @@ class UserAdminController extends AbstractAdminController
     protected string $routePrefix = '/admin/users';
     protected array $routeMiddleware = [AdminAuthorizationMiddleware::class, AuthMiddleware::class];
 
+    private const MESSAGE_PASSWORD_FIELDS_MUST_MATCH = 'Password fields must match.';
+    private const MESSAGE_CANNOT_DISABLE_OWN_ACCOUNT = 'You cannot disable your own account.';
+    private const MESSAGE_USER_CREATED_SUCCESS = 'User was created successfully.';
+    private const MESSAGE_USER_PROFILE_UPDATED_SUCCESS = 'User profile was updated successfully.';
+    private const MESSAGE_PASSWORD_RESET_SUCCESS = 'Password was reset successfully.';
+
+    private const MESSAGE_GROUP_SELECT_REQUIRED = 'Please select a user group to assign.';
+    private const MESSAGE_GROUP_MEMBERSHIP_CREATED_SUCCESS = 'User group membership was created successfully.';
+    private const MESSAGE_GROUP_MEMBERSHIP_UPDATED_SUCCESS = 'User group membership was updated successfully.';
+    private const MESSAGE_GROUP_MEMBERSHIP_DISABLED_SUCCESS = 'User group membership was disabled successfully.';
+    private const MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND = 'The membership does not exist.';
+    private const MESSAGE_GROUP_MEMBERSHIP_EXPIRY_REQUIRED = 'The membership expiry is required.';
+    private const MESSAGE_GROUP_MEMBERSHIP_MISSING_GRANTED = 'The membership record is missing its access grant date.';
+    private const MESSAGE_GROUP_MEMBERSHIP_CREATE_FAILED =
+        'Membership could not be created. The user may already be assigned to this group.';
+
+    private const MESSAGE_ADMIN_GROUP_MODIFY_FORBIDDEN =
+        'Only the superadmin can modify memberships for the administrative user group.';
+    private const MESSAGE_ADMIN_GROUP_DISABLE_FORBIDDEN =
+        'Only the superadmin can disable memberships in the administrative user group.';
+
+    private const MESSAGE_GROUP_INVALID =
+        'The selected user group is invalid. Please refresh the page and try again.';
+    private const MESSAGE_GROUP_MISSING =
+        'The selected user group no longer exists. Please refresh the page and try again.';
+    private const MESSAGE_GROUP_DATE_FORMAT_INVALID =
+        'Membership dates must use UTC format YYYY-MM-DD HH:MM:SS.';
+    private const MESSAGE_GROUP_EXPIRY_BEFORE_GRANTED =
+        'Membership expiry must be later than the original access grant time.';
+    private const MESSAGE_GROUP_MAX_DURATION_EXCEEDED =
+        'User group access can be granted for a maximum of two years.';
+    private const MESSAGE_GROUP_UPDATE_FAILED =
+        'User group membership could not be updated. Please try again.';
+
     /**
      * @var UserService The user business logic service.
      */
@@ -153,7 +187,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'Please select a user group to assign.'
+                self::MESSAGE_GROUP_SELECT_REQUIRED
             );
         }
 
@@ -171,7 +205,7 @@ class UserAdminController extends AbstractAdminController
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users/' . $userId,
-                'User group membership was created.'
+                self::MESSAGE_GROUP_MEMBERSHIP_CREATED_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             return $this->renderUserEditWithGroupError(
@@ -185,7 +219,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'The membership could not be created. The user may already be assigned to this group.'
+                self::MESSAGE_GROUP_MEMBERSHIP_CREATE_FAILED
             );
         }
     }
@@ -219,7 +253,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'Only the superadmin can modify memberships for the administrative user group.'
+                self::MESSAGE_ADMIN_GROUP_MODIFY_FORBIDDEN
             );
         }
 
@@ -229,7 +263,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'The membership does not exist.'
+                self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
             );
         }
 
@@ -242,7 +276,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'The membership expiry is required.'
+                self::MESSAGE_GROUP_MEMBERSHIP_EXPIRY_REQUIRED
             );
         }
 
@@ -255,7 +289,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'The membership record is missing its access grant date.'
+                self::MESSAGE_GROUP_MEMBERSHIP_MISSING_GRANTED
             );
         }
 
@@ -273,14 +307,14 @@ class UserAdminController extends AbstractAdminController
                     $request,
                     $response,
                     $user,
-                    'The membership does not exist.'
+                    self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
                 );
             }
 
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users/' . $userId,
-                'User group membership was updated.'
+                self::MESSAGE_GROUP_MEMBERSHIP_UPDATED_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             return $this->renderUserEditWithGroupError(
@@ -321,7 +355,7 @@ class UserAdminController extends AbstractAdminController
                 $request,
                 $response,
                 $user,
-                'Only the superadmin can disable memberships in the administrative user group.'
+                self::MESSAGE_ADMIN_GROUP_DISABLE_FORBIDDEN
             );
         }
 
@@ -332,14 +366,14 @@ class UserAdminController extends AbstractAdminController
                     $request,
                     $response,
                     $user,
-                    'The membership does not exist.'
+                    self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
                 );
             }
 
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users/' . $userId,
-                'User group membership was disabled.'
+                self::MESSAGE_GROUP_MEMBERSHIP_DISABLED_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             return $this->renderUserEditWithGroupError(
@@ -387,7 +421,7 @@ class UserAdminController extends AbstractAdminController
         if ($password !== $confirm) {
             return $this->twig->render($response, 'admin/users/create.twig', [
                 'pageTitle'  => 'Create User',
-                'error'      => 'The password fields do not match.',
+                'error'      => self::MESSAGE_PASSWORD_FIELDS_MUST_MATCH,
                 'csrf_token' => $this->getCsrfToken($request),
                 'old'        => $old,
             ]);
@@ -399,7 +433,7 @@ class UserAdminController extends AbstractAdminController
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users',
-                'User was created.'
+                self::MESSAGE_USER_CREATED_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             return $this->twig->render($response, 'admin/users/create.twig', [
@@ -485,7 +519,7 @@ class UserAdminController extends AbstractAdminController
 
             return $this->twig->render($response, 'admin/users/edit.twig', [
                 'pageTitle'    => 'Edit User',
-                'error'        => 'You cannot disable your own account.',
+                'error'        => self::MESSAGE_CANNOT_DISABLE_OWN_ACCOUNT,
                 'user'         => $existingUser,
                 'auth_user_id' => $authUserId,
                 'csrf_token'   => $this->getCsrfToken($request),
@@ -510,7 +544,7 @@ class UserAdminController extends AbstractAdminController
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users/' . $userId,
-                'User profile changes were saved.'
+                self::MESSAGE_USER_PROFILE_UPDATED_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             $existingUser = $this->userService->getUserById($userId);
@@ -563,7 +597,7 @@ class UserAdminController extends AbstractAdminController
                 'user'           => $user,
                 'auth_user_id'   => (string) $request->getAttribute('auth_user_id', ''),
                 'csrf_token'     => $this->getCsrfToken($request),
-                'password_error' => 'The password fields do not match.',
+                'password_error' => self::MESSAGE_PASSWORD_FIELDS_MUST_MATCH,
             ], $groupData));
         }
 
@@ -573,7 +607,7 @@ class UserAdminController extends AbstractAdminController
             return $this->redirectWithSuccess(
                 $response,
                 '/admin/users/' . $userId,
-                'Password was reset successfully.'
+                self::MESSAGE_PASSWORD_RESET_SUCCESS
             );
         } catch (InvalidArgumentException $exception) {
             $groupData = $this->buildGroupDataForUser(
@@ -695,25 +729,25 @@ class UserAdminController extends AbstractAdminController
     private function mapGroupMembershipErrorMessage(string $message): string
     {
         if (str_contains($message, 'valid UUID')) {
-            return 'The selected user group is invalid. Please refresh the page and try again.';
+            return self::MESSAGE_GROUP_INVALID;
         }
 
         if (str_contains($message, 'does not exist')) {
-            return 'The selected user group no longer exists. Please refresh the page and try again.';
+            return self::MESSAGE_GROUP_MISSING;
         }
 
         if (str_contains($message, 'UTC format')) {
-            return 'Membership dates must use UTC format YYYY-MM-DD HH:MM:SS.';
+            return self::MESSAGE_GROUP_DATE_FORMAT_INVALID;
         }
 
         if (str_contains($message, 'later than access_granted')) {
-            return 'Membership expiry must be later than the original access grant time.';
+            return self::MESSAGE_GROUP_EXPIRY_BEFORE_GRANTED;
         }
 
         if (str_contains($message, 'two years')) {
-            return 'User group access can be granted for a maximum of two years.';
+            return self::MESSAGE_GROUP_MAX_DURATION_EXCEEDED;
         }
 
-        return 'The user group membership could not be updated. Please try again.';
+        return self::MESSAGE_GROUP_UPDATE_FAILED;
     }
 }

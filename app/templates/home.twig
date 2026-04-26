@@ -16,6 +16,12 @@
         </div>
 
         <div class="login-card">
+            {% if success is defined and success is not null %}
+            <div class="alert alert-success">
+                {{ success }}
+            </div>
+            {% endif %}
+
             {% if error is defined and error is not null %}
             <div class="alert alert-error">
                 {{ error }}

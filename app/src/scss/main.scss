@@ -582,3 +582,109 @@ td.actions {
     border-radius: $border-radius;
     padding: $spacing-lg;
 }
+
+
+// User dashboard layout.
+
+.user-dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.user-dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-sm $spacing-xl;
+    background: $color-sidebar;
+    color: $color-sidebar-text;
+}
+
+.user-dashboard-brand-link {
+    color: $color-sidebar-text;
+    font-weight: 700;
+    font-size: $font-size-h2;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: none;
+        color: #fff;
+    }
+}
+
+.user-dashboard-nav {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+}
+
+.user-dashboard-greeting {
+    font-size: $font-size-small;
+    color: #94a3b8;
+}
+
+.user-dashboard-content {
+    flex: 1;
+    padding: $spacing-xl;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.user-dashboard-content h1 {
+    margin-bottom: $spacing-lg;
+}
+
+
+// Public homepage layout.
+
+.homepage {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.homepage-header {
+    padding: $spacing-md $spacing-xl;
+    background: $color-sidebar;
+}
+
+.homepage-brand {
+    color: $color-sidebar-text;
+    font-weight: 700;
+    font-size: $font-size-h2;
+}
+
+.homepage-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-xl;
+}
+
+.homepage-hero {
+    text-align: center;
+    margin-bottom: $spacing-xl;
+}
+
+.homepage-heading {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: $spacing-sm;
+}
+
+.homepage-subheading {
+    color: $color-text-muted;
+    font-size: 1rem;
+}
+
+.homepage-footer {
+    padding: $spacing-md $spacing-xl;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    border-top: 1px solid $color-border;
+}

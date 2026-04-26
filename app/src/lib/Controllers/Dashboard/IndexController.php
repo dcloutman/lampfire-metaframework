@@ -62,10 +62,10 @@ class IndexController extends AbstractAdminController
             );
         }
 
-        return $this->twig->render($response, 'dashboard.twig', [
+        return $this->twig->render($response, 'dashboard.twig', array_merge([
             'pageTitle'           => 'Dashboard',
             'username'            => $displayName,
             'canAccessAdminPanel' => $canAccessAdminPanel,
-        ]);
+        ], $this->getFlashViewData($request)));
     }
 }

@@ -26,6 +26,10 @@ class AuthController extends AbstractAdminController
 
     private const COOKIE_NAME = 'session_token';
     private const SESSION_LIFETIME_SECONDS = 7200;
+    private const MESSAGE_USERNAME_PASSWORD_REQUIRED = 'Username and password are required.';
+    private const MESSAGE_INVALID_USERNAME_PASSWORD = 'Invalid username or password.';
+    private const MESSAGE_SIGN_IN_SUCCESS = 'You signed in successfully.';
+    private const MESSAGE_SIGN_OUT_SUCCESS = 'You signed out successfully.';
 
     /**
      * @var AuthService Service for Paseto token authentication.
@@ -54,9 +58,9 @@ class AuthController extends AbstractAdminController
     #[Route('GET', '/login')]
     public function showLoginForm(Request $request, Response $response): Response
     {
-        return $this->twig->render($response, 'admin/login.twig', [
+        return $this->twig->render($response, 'admin/login.twig', array_merge([
             'pageTitle' => 'Admin Login',
-        ]);
+        ], $this->getFlashViewData($request)));
     }
 
     /**
@@ -78,19 +82,21 @@ class AuthController extends AbstractAdminController
         $password = $this->formRawString($body, 'password');
 
         if ($username === '' || $password === '') {
-            return $this->twig->render($response, 'admin/login.twig', [
-                'pageTitle' => 'Admin Login',
-                'error'     => 'Username and password are required.',
-            ]);
+            return $this->redirectWithError(
+                $response,
+                '/admin/login',
+                self::MESSAGE_USERNAME_PASSWORD_REQUIRED
+            );
         }
 
         $result = $this->authService->authenticate($username, $password);
 
         if ($result === null) {
-            return $this->twig->render($response, 'admin/login.twig', [
-                'pageTitle' => 'Admin Login',
-                'error'     => 'Invalid username or password.',
-            ]);
+            return $this->redirectWithError(
+                $response,
+                '/admin/login',
+                self::MESSAGE_INVALID_USERNAME_PASSWORD
+            );
         }
 
         // Set the Paseto token in a secure, HTTP-only cookie.
@@ -105,7 +111,7 @@ class AuthController extends AbstractAdminController
 
         return $response
             ->withHeader('Set-Cookie', $cookieHeader)
-            ->withHeader('Location', '/admin/dashboard')
+            ->withHeader('Location', $this->urlWithFlash('/admin/dashboard', self::MESSAGE_SIGN_IN_SUCCESS, null))
             ->withStatus(302);
     }
 
@@ -126,7 +132,7 @@ class AuthController extends AbstractAdminController
 
         return $response
             ->withHeader('Set-Cookie', $cookieHeader)
-            ->withHeader('Location', '/admin/login')
+            ->withHeader('Location', $this->urlWithFlash('/admin/login', self::MESSAGE_SIGN_OUT_SUCCESS, null))
             ->withStatus(302);
     }
 
@@ -143,10 +149,10 @@ class AuthController extends AbstractAdminController
         $username = $request->getAttribute('auth_username');
         $displayName = is_string($username) ? $username : 'Admin';
 
-        return $this->twig->render($response, 'admin/dashboard.twig', [
+        return $this->twig->render($response, 'admin/dashboard.twig', array_merge([
             'pageTitle'  => 'Dashboard',
             'username'   => $displayName,
             'csrf_token' => $this->getCsrfToken($request),
-        ]);
+        ], $this->getFlashViewData($request)));
     }
 }

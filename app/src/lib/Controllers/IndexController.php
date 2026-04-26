@@ -24,6 +24,9 @@ class IndexController extends AbstractAdminController
 
     private const COOKIE_NAME = 'session_token';
     private const SESSION_LIFETIME_SECONDS = 7200;
+    private const MESSAGE_USERNAME_PASSWORD_REQUIRED = 'Username and password are required.';
+    private const MESSAGE_INVALID_USERNAME_PASSWORD = 'Invalid username or password.';
+    private const MESSAGE_SIGN_IN_SUCCESS = 'You signed in successfully.';
 
     /**
      * @var AuthService Service for Paseto token authentication.
@@ -51,9 +54,9 @@ class IndexController extends AbstractAdminController
      */
     public function get(Request $request, Response $response): Response
     {
-        return $this->twig->render($response, 'home.twig', [
+        return $this->twig->render($response, 'home.twig', array_merge([
             'pageTitle' => 'Lampfire',
-        ]);
+        ], $this->getFlashViewData($request)));
     }
 
     /**
@@ -74,19 +77,21 @@ class IndexController extends AbstractAdminController
         $password = $this->formRawString($body, 'password');
 
         if ($username === '' || $password === '') {
-            return $this->twig->render($response, 'home.twig', [
-                'pageTitle' => 'Lampfire',
-                'error'     => 'Username and password are required.',
-            ]);
+            return $this->redirectWithError(
+                $response,
+                '/',
+                self::MESSAGE_USERNAME_PASSWORD_REQUIRED
+            );
         }
 
         $result = $this->authService->authenticate($username, $password);
 
         if ($result === null) {
-            return $this->twig->render($response, 'home.twig', [
-                'pageTitle' => 'Lampfire',
-                'error'     => 'Invalid username or password.',
-            ]);
+            return $this->redirectWithError(
+                $response,
+                '/',
+                self::MESSAGE_INVALID_USERNAME_PASSWORD
+            );
         }
 
         // Set the Paseto token in a secure, HTTP-only cookie.
@@ -101,7 +106,7 @@ class IndexController extends AbstractAdminController
 
         return $response
             ->withHeader('Set-Cookie', $cookieHeader)
-            ->withHeader('Location', '/dashboard')
+            ->withHeader('Location', $this->urlWithFlash('/dashboard', self::MESSAGE_SIGN_IN_SUCCESS, null))
             ->withStatus(302);
     }
 }

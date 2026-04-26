@@ -520,4 +520,103 @@ td.actions form {
   padding: 1.5rem;
 }
 
+.user-dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.user-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 2rem;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.user-dashboard-brand-link {
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+.user-dashboard-brand-link:hover {
+  text-decoration: none;
+  color: #fff;
+}
+
+.user-dashboard-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-dashboard-greeting {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.user-dashboard-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.user-dashboard-content h1 {
+  margin-bottom: 1.5rem;
+}
+
+.homepage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.homepage-header {
+  padding: 1rem 2rem;
+  background: #1e293b;
+}
+
+.homepage-brand {
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.homepage-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.homepage-hero {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.homepage-heading {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.homepage-subheading {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+.homepage-footer {
+  padding: 1rem 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  border-top: 1px solid #e2e8f0;
+}
+
 /*# sourceMappingURL=main.css.map */

@@ -20,6 +20,19 @@
 
     <main class="user-dashboard-content">
         <h1>Dashboard</h1>
+
+        {% if success is defined and success is not null %}
+        <div class="alert alert-success">
+            {{ success }}
+        </div>
+        {% endif %}
+
+        {% if error is defined and error is not null %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
         <section class="dashboard-welcome">
             <p>Welcome, <strong>{{ username }}</strong>.</p>
         </section>
