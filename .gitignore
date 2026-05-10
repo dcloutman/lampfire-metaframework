@@ -17,6 +17,7 @@
 # Ignore vendor files.
 vendor/
 
+node_modules
 
 # No turd files, including OS generated files.
 *.swp

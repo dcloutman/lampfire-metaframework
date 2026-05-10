@@ -16,6 +16,7 @@ use Lampfire\Records\PermissionSetUserGroupRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
+use Lampfire\Services\UserService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -30,19 +31,24 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     private PermissionSetService $permissionSetService;
     private PermissionSetUserGroupRecord $permissionSetUserGroupRecord;
+    private UserService $userService;
 
     /**
      * Creates the permission set user group controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
+     * @param PermissionSetUserGroupRecord $permissionSetUserGroupRecord The permission set user group record gateway.
+     * @param UserService $userService The user service.
      */
     public function __construct(
         PermissionSetService $permissionSetService,
-        PermissionSetUserGroupRecord $permissionSetUserGroupRecord
+        PermissionSetUserGroupRecord $permissionSetUserGroupRecord,
+        UserService $userService
     )
     {
         $this->permissionSetService = $permissionSetService;
         $this->permissionSetUserGroupRecord = $permissionSetUserGroupRecord;
+        $this->userService = $userService;
     }
 
     /**
@@ -56,6 +62,10 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_USER_GROUP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permission set user groups.');
+        }
+
         $params = $request->getQueryParams();
         $permissionSetId = $params['permission_set_id'] ?? null;
         $userGroupId = $params['user_group_id'] ?? null;
@@ -89,6 +99,10 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_USER_GROUP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permission set user groups.');
+        }
+
         $userGroupId = $this->routeArgument($request, 'userGroupId');
         $permissionSetId = $this->routeArgument($request, 'permissionSetId');
 
@@ -125,6 +139,10 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_USER_GROUP_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create permission set user groups.');
+        }
+
         $body = $request->getParsedBody();
         $userGroupId = $this->extractRequiredStringFromBodyData($body, 'user_group_id');
         $permissionSetId = $this->extractRequiredStringFromBodyData($body, 'permission_set_id');
@@ -167,6 +185,10 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_USER_GROUP_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update permission set user groups.');
+        }
+
         $userGroupId = $this->routeArgument($request, 'userGroupId');
         $permissionSetId = $this->routeArgument($request, 'permissionSetId');
 
@@ -218,6 +240,10 @@ class PermissionSetUserGroupController extends AbstractRestController
      */
     public function delete(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_USER_GROUP_DELETE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to delete permission set user groups.');
+        }
+
         $userGroupId = $this->routeArgument($request, 'userGroupId');
         $permissionSetId = $this->routeArgument($request, 'permissionSetId');
 
@@ -232,5 +258,20 @@ class PermissionSetUserGroupController extends AbstractRestController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Returns true when the authenticated user has the required admin permission token.
+     *
+     * @param Request $request The incoming request.
+     * @param string $permissionToken The required permission token.
+     * @return bool True when authorized.
+     */
+    private function isAuthorized(Request $request, string $permissionToken): bool
+    {
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        return $this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, $permissionToken);
     }
 }

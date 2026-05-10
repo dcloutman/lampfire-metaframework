@@ -59,6 +59,50 @@ class PermissionService extends AbstractService
     }
 
     /**
+     * Returns the configured administrative permission token prefix.
+     *
+     * @return string The administrative permission token prefix.
+     */
+    public function getAdministrativePermissionTokenPrefix(): string
+    {
+        $value = getenv('ADMIN_PERMISSION_TOKEN_PREFIX');
+        if (is_string($value) === false) {
+            return 'ADMIN_PERMISSION_';
+        }
+
+        $prefix = trim($value);
+
+        if ($prefix === '') {
+            return 'ADMIN_PERMISSION_';
+        }
+
+        return $prefix;
+    }
+
+    /**
+     * Returns true when a permission ID belongs to an administrative permission.
+     *
+     * @param string $permissionId The UUID of the permission.
+     * @return bool True when the permission token uses the admin prefix.
+     */
+    public function isAdministrativePermissionId(string $permissionId): bool
+    {
+        $permission = $this->getPermissionById($permissionId);
+        if ($permission === null) {
+            return false;
+        }
+
+        $permissionToken = $permission['permission_token'] ?? null;
+        if (is_string($permissionToken) === false || $permissionToken === '') {
+            return false;
+        }
+
+        $adminPrefix = $this->getAdministrativePermissionTokenPrefix();
+
+        return str_starts_with($permissionToken, $adminPrefix);
+    }
+
+    /**
      * Creates a new permission.
      *
      * Validates inputs and enforces uniqueness of the programmatic token

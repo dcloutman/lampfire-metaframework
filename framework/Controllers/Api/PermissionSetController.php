@@ -16,6 +16,7 @@ use Lampfire\Records\PermissionSetRecord;
 use Lampfire\Services\PermissionSetService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
+use Lampfire\Services\UserService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -29,16 +30,24 @@ class PermissionSetController extends AbstractRestController
      */
     private PermissionSetService $permissionSetService;
     private PermissionSetRecord $permissionSetRecord;
+    private UserService $userService;
 
     /**
      * Creates the permission set controller.
      *
      * @param PermissionSetService $permissionSetService The permission set service.
+     * @param PermissionSetRecord $permissionSetRecord The permission set record gateway.
+     * @param UserService $userService The user service.
      */
-    public function __construct(PermissionSetService $permissionSetService, PermissionSetRecord $permissionSetRecord)
+    public function __construct(
+        PermissionSetService $permissionSetService,
+        PermissionSetRecord $permissionSetRecord,
+        UserService $userService
+    )
     {
         $this->permissionSetService = $permissionSetService;
         $this->permissionSetRecord = $permissionSetRecord;
+        $this->userService = $userService;
     }
 
     /**
@@ -50,6 +59,10 @@ class PermissionSetController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permission sets.');
+        }
+
         $sets = $this->permissionSetRecord->findAll();
 
         return $this->prepareJsonResponse($response, ['data' => $sets]);
@@ -64,6 +77,10 @@ class PermissionSetController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permission sets.');
+        }
+
         $setId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($setId) === false) {
@@ -97,6 +114,10 @@ class PermissionSetController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create permission sets.');
+        }
+
         $body  = $request->getParsedBody();
         $token = $this->extractRequiredStringFromBodyData($body, 'permission_set_token');
         $title = $this->extractRequiredStringFromBodyData($body, 'title');
@@ -129,6 +150,10 @@ class PermissionSetController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update permission sets.');
+        }
+
         $setId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($setId) === false) {
@@ -171,6 +196,10 @@ class PermissionSetController extends AbstractRestController
      */
     public function delete(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_SET_DELETE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to delete permission sets.');
+        }
+
         $setId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($setId) === false) {
@@ -184,5 +213,20 @@ class PermissionSetController extends AbstractRestController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Returns true when the authenticated user has the required admin permission token.
+     *
+     * @param Request $request The incoming request.
+     * @param string $permissionToken The required permission token.
+     * @return bool True when authorized.
+     */
+    private function isAuthorized(Request $request, string $permissionToken): bool
+    {
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        return $this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, $permissionToken);
     }
 }

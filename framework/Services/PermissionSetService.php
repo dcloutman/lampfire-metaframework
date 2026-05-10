@@ -11,12 +11,15 @@ declare(strict_types=1);
 
 namespace Lampfire\Services;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 use Lampfire\Records\PermissionRecord;
 use Lampfire\Records\PermissionSetMemberRecord;
 use Lampfire\Records\PermissionSetPermissionRecord;
 use Lampfire\Records\PermissionSetRecord;
 use Lampfire\Records\PermissionSetUserGroupRecord;
+use Lampfire\Records\UserGroupMembershipRecord;
 use Lampfire\Records\UserGroupRecord;
 use Lampfire\Records\UserRecord;
 use Lampfire\Utilities\Enforcers;
@@ -30,6 +33,7 @@ class PermissionSetService extends AbstractService
     private PermissionRecord $permissionRecord;
     private UserRecord $userRecord;
     private UserGroupRecord $userGroupRecord;
+    private UserGroupMembershipRecord $userGroupMembershipRecord;
 
     public function __construct(
         PermissionSetRecord $permissionSetRecord,
@@ -38,7 +42,8 @@ class PermissionSetService extends AbstractService
         PermissionSetUserGroupRecord $permissionSetUserGroupRecord,
         PermissionRecord $permissionRecord,
         UserRecord $userRecord,
-        UserGroupRecord $userGroupRecord
+        UserGroupRecord $userGroupRecord,
+        UserGroupMembershipRecord $userGroupMembershipRecord
     ) {
         $this->permissionSetRecord = $permissionSetRecord;
         $this->permissionSetPermissionRecord = $permissionSetPermissionRecord;
@@ -47,6 +52,7 @@ class PermissionSetService extends AbstractService
         $this->permissionRecord = $permissionRecord;
         $this->userRecord = $userRecord;
         $this->userGroupRecord = $userGroupRecord;
+        $this->userGroupMembershipRecord = $userGroupMembershipRecord;
     }
 
     /**
@@ -139,6 +145,10 @@ class PermissionSetService extends AbstractService
             throw new InvalidArgumentException('The specified permission does not exist.');
         }
 
+        if ($this->permissionSetPermissionRecord->getByPrimaryKey($permissionSetId, $permissionId) !== null) {
+            throw new InvalidArgumentException('Association already exists.');
+        }
+
         $created = $this->permissionSetPermissionRecord->create([
             'permission_set_id' => $permissionSetId,
             'permission_id' => $permissionId,
@@ -213,6 +223,17 @@ class PermissionSetService extends AbstractService
             throw new InvalidArgumentException('The specified user does not exist.');
         }
 
+        if ($this->permissionSetMemberRecord->getByPrimaryKey($permissionSetId, $userId) !== null) {
+            throw new InvalidArgumentException('Association already exists.');
+        }
+
+        $this->enforceNoDirectGrantOverlapWithGroupAssignments(
+            $userId,
+            $permissionSetId,
+            $hasAccess,
+            $accessExpiry
+        );
+
         $created = $this->permissionSetMemberRecord->create([
             'permission_set_id' => $permissionSetId,
             'user_id' => $userId,
@@ -243,6 +264,13 @@ class PermissionSetService extends AbstractService
         if ($existing === null) {
             return null;
         }
+
+        $this->enforceNoDirectGrantOverlapWithGroupAssignments(
+            $userId,
+            $permissionSetId,
+            $hasAccess,
+            $accessExpiry
+        );
 
         $existing->update([
             'permission_set_id' => $permissionSetId,
@@ -294,6 +322,10 @@ class PermissionSetService extends AbstractService
 
         if ($this->permissionSetRecord->getByPrimaryKey($permissionSetId) === null) {
             throw new InvalidArgumentException('The specified permission set does not exist.');
+        }
+
+        if ($this->permissionSetUserGroupRecord->getByPrimaryKey($userGroupId, $permissionSetId) !== null) {
+            throw new InvalidArgumentException('Association already exists.');
         }
 
         $created = $this->permissionSetUserGroupRecord->create([
@@ -418,5 +450,136 @@ class PermissionSetService extends AbstractService
             'created_at' => $record->getCreatedAt(),
             'updated_at' => $record->getUpdatedAt(),
         ];
+    }
+
+    /**
+     * Blocks direct set memberships that would grant permissions already
+     * granted to the user through active group-to-set associations.
+     */
+    private function enforceNoDirectGrantOverlapWithGroupAssignments(
+        string $userId,
+        string $permissionSetId,
+        bool $hasAccess,
+        string $accessExpiry
+    ): void {
+        if ($hasAccess === false) {
+            return;
+        }
+
+        if ($this->isExpiryInFutureUtc($accessExpiry) === false) {
+            return;
+        }
+
+        $directPermissionIds = $this->getPermissionIdsForSet($permissionSetId);
+        if (count($directPermissionIds) === 0) {
+            return;
+        }
+
+        $groupPermissionIds = $this->getActiveGroupGrantedPermissionIdsForUser($userId);
+        foreach ($directPermissionIds as $permissionId => $_unused) {
+            if (array_key_exists($permissionId, $groupPermissionIds)) {
+                throw new InvalidArgumentException('Association already exists.');
+            }
+        }
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function getPermissionIdsForSet(string $permissionSetId): array
+    {
+        $setPermissions = $this->permissionSetPermissionRecord->findBySetId($permissionSetId);
+        $permissionIds = [];
+
+        foreach ($setPermissions as $setPermission) {
+            $permissionId = $setPermission['permission_id'] ?? null;
+            if (is_string($permissionId) && $permissionId !== '') {
+                $permissionIds[$permissionId] = true;
+            }
+        }
+
+        return $permissionIds;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function getActiveGroupGrantedPermissionIdsForUser(string $userId): array
+    {
+        $memberships = $this->userGroupMembershipRecord->findByUserId($userId);
+        $permissionIds = [];
+
+        foreach ($memberships as $membership) {
+            if ($this->isActiveAssociation($membership) === false) {
+                continue;
+            }
+
+            $userGroupId = $membership['user_group_id'] ?? null;
+            if (is_string($userGroupId) === false || $userGroupId === '') {
+                continue;
+            }
+
+            $group = $this->userGroupRecord->getByPrimaryKey($userGroupId);
+            if ($group === null) {
+                continue;
+            }
+
+            $groupEnabled = $group->get('enabled');
+            if ((int) $groupEnabled !== 1) {
+                continue;
+            }
+
+            $groupAssignments = $this->permissionSetUserGroupRecord->findByGroupId($userGroupId);
+            foreach ($groupAssignments as $groupAssignment) {
+                if ($this->isActiveAssociation($groupAssignment) === false) {
+                    continue;
+                }
+
+                $groupPermissionSetId = $groupAssignment['permission_set_id'] ?? null;
+                if (is_string($groupPermissionSetId) === false || $groupPermissionSetId === '') {
+                    continue;
+                }
+
+                $setPermissions = $this->permissionSetPermissionRecord->findBySetId($groupPermissionSetId);
+                foreach ($setPermissions as $setPermission) {
+                    $permissionId = $setPermission['permission_id'] ?? null;
+                    if (is_string($permissionId) && $permissionId !== '') {
+                        $permissionIds[$permissionId] = true;
+                    }
+                }
+            }
+        }
+
+        return $permissionIds;
+    }
+
+    /**
+     * @param array<string, mixed> $association
+     */
+    private function isActiveAssociation(array $association): bool
+    {
+        $hasAccess = $association['has_access'] ?? 0;
+        if ((int) $hasAccess !== 1) {
+            return false;
+        }
+
+        $accessExpiry = $association['access_expiry'] ?? null;
+        if (is_string($accessExpiry) === false || $accessExpiry === '') {
+            return false;
+        }
+
+        return $this->isExpiryInFutureUtc($accessExpiry);
+    }
+
+    private function isExpiryInFutureUtc(string $accessExpiry): bool
+    {
+        $expiry = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $accessExpiry, new DateTimeZone('UTC'));
+        if ($expiry === false) {
+            return false;
+        }
+
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        return $expiry > $now;
     }
 }

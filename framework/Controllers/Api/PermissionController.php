@@ -13,6 +13,7 @@ namespace Lampfire\Controllers\Api;
 
 use App\Middleware\AuthMiddleware;
 use App\Services\PermissionService;
+use Lampfire\Services\UserService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -29,13 +30,20 @@ class PermissionController extends AbstractRestController
     private PermissionService $permissionService;
 
     /**
+     * @var UserService Service used to authorize admin API actions.
+     */
+    private UserService $userService;
+
+    /**
      * Creates the permission controller.
      *
      * @param PermissionService $permissionService The permission service.
+     * @param UserService $userService The user service.
      */
-    public function __construct(PermissionService $permissionService)
+    public function __construct(PermissionService $permissionService, UserService $userService)
     {
         $this->permissionService = $permissionService;
+        $this->userService = $userService;
     }
 
     /**
@@ -47,6 +55,10 @@ class PermissionController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permissions.');
+        }
+
         $permissions = $this->permissionService->getAllPermissions();
 
         return $this->prepareJsonResponse($response, ['data' => $permissions]);
@@ -61,6 +73,10 @@ class PermissionController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read permissions.');
+        }
+
         $permissionId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($permissionId) === false) {
@@ -85,6 +101,10 @@ class PermissionController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create permissions.');
+        }
+
         $body = $request->getParsedBody();
         $permissionToken = $this->extractRequiredStringFromBodyData($body, 'permission_token');
         $permissionTitle = $this->extractRequiredStringFromBodyData($body, 'permission_title');
@@ -117,10 +137,23 @@ class PermissionController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update permissions.');
+        }
+
         $permissionId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($permissionId) === false) {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The id parameter must be a valid UUID v4.');
+        }
+
+        if ($this->permissionService->isAdministrativePermissionId($permissionId)) {
+            return $this->prepareJsonErrorResponse(
+                $response,
+                403,
+                'Forbidden',
+                'Framework administrative permissions are immutable and cannot be modified.'
+            );
         }
 
         $body = $request->getParsedBody();
@@ -164,10 +197,23 @@ class PermissionController extends AbstractRestController
      */
     public function delete(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_PERMISSION_DELETE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to delete permissions.');
+        }
+
         $permissionId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($permissionId) === false) {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The id parameter must be a valid UUID v4.');
+        }
+
+        if ($this->permissionService->isAdministrativePermissionId($permissionId)) {
+            return $this->prepareJsonErrorResponse(
+                $response,
+                403,
+                'Forbidden',
+                'Framework administrative permissions are immutable and cannot be deleted.'
+            );
         }
 
         $deleted = $this->permissionService->deletePermission($permissionId);
@@ -177,5 +223,20 @@ class PermissionController extends AbstractRestController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Returns true when the authenticated user has the required admin permission token.
+     *
+     * @param Request $request The incoming request.
+     * @param string $permissionToken The required permission token.
+     * @return bool True when authorized.
+     */
+    private function isAuthorized(Request $request, string $permissionToken): bool
+    {
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        return $this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, $permissionToken);
     }
 }

@@ -25,11 +25,9 @@ use App\Services\UserGroupService;
 use Lampfire\Services\UserService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractAdminController;
-use Lampfire\Routing\Route;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
-use Throwable;
 
 class UserAdminController extends AbstractAdminController
 {
@@ -41,34 +39,6 @@ class UserAdminController extends AbstractAdminController
     private const MESSAGE_USER_CREATED_SUCCESS = 'User was created successfully.';
     private const MESSAGE_USER_PROFILE_UPDATED_SUCCESS = 'User profile was updated successfully.';
     private const MESSAGE_PASSWORD_RESET_SUCCESS = 'Password was reset successfully.';
-
-    private const MESSAGE_GROUP_SELECT_REQUIRED = 'Please select a user group to assign.';
-    private const MESSAGE_GROUP_MEMBERSHIP_CREATED_SUCCESS = 'User group membership was created successfully.';
-    private const MESSAGE_GROUP_MEMBERSHIP_UPDATED_SUCCESS = 'User group membership was updated successfully.';
-    private const MESSAGE_GROUP_MEMBERSHIP_DISABLED_SUCCESS = 'User group membership was disabled successfully.';
-    private const MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND = 'The membership does not exist.';
-    private const MESSAGE_GROUP_MEMBERSHIP_EXPIRY_REQUIRED = 'The membership expiry is required.';
-    private const MESSAGE_GROUP_MEMBERSHIP_MISSING_GRANTED = 'The membership record is missing its access grant date.';
-    private const MESSAGE_GROUP_MEMBERSHIP_CREATE_FAILED =
-        'Membership could not be created. The user may already be assigned to this group.';
-
-    private const MESSAGE_ADMIN_GROUP_MODIFY_FORBIDDEN =
-        'Only the superadmin can modify memberships for the administrative user group.';
-    private const MESSAGE_ADMIN_GROUP_DISABLE_FORBIDDEN =
-        'Only the superadmin can disable memberships in the administrative user group.';
-
-    private const MESSAGE_GROUP_INVALID =
-        'The selected user group is invalid. Please refresh the page and try again.';
-    private const MESSAGE_GROUP_MISSING =
-        'The selected user group no longer exists. Please refresh the page and try again.';
-    private const MESSAGE_GROUP_DATE_FORMAT_INVALID =
-        'Membership dates must use UTC format YYYY-MM-DD HH:MM:SS.';
-    private const MESSAGE_GROUP_EXPIRY_BEFORE_GRANTED =
-        'Membership expiry must be later than the original access grant time.';
-    private const MESSAGE_GROUP_MAX_DURATION_EXCEEDED =
-        'User group access can be granted for a maximum of two years.';
-    private const MESSAGE_GROUP_UPDATE_FAILED =
-        'User group membership could not be updated. Please try again.';
 
     /**
      * @var UserService The user business logic service.
@@ -158,232 +128,6 @@ class UserAdminController extends AbstractAdminController
         ], $groupData, $flashData));
     }
 
-    /**
-     * POST /admin/users/{id}/groups - Adds the user to the selected group.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response A redirect or a re-rendered detail page on error.
-     */
-    #[Route('POST', '/{id}/groups')]
-    public function addUserToGroup(Request $request, Response $response): Response
-    {
-        $userId = $this->routeArgument($request, 'id');
-
-        if ($this->isValidUuid($userId) === false) {
-            return $this->notFound($response, 'The user identifier is not valid.');
-        }
-
-        $user = $this->userService->getUserById($userId);
-        if ($user === null) {
-            return $this->notFound($response, 'The requested user was not found.');
-        }
-
-        $body = $request->getParsedBody();
-        $userGroupId = $this->formString($body, 'user_group_id');
-
-        if ($userGroupId === '') {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_GROUP_SELECT_REQUIRED
-            );
-        }
-
-        try {
-            $accessGrantedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-            $this->userGroupService->addMember(
-                $userId,
-                $userGroupId,
-                $accessGrantedAt->format('Y-m-d H:i:s'),
-                $accessGrantedAt->add(new DateInterval('P2Y'))->format('Y-m-d H:i:s'),
-                true
-            );
-
-            return $this->redirectWithSuccess(
-                $response,
-                '/admin/users/' . $userId,
-                self::MESSAGE_GROUP_MEMBERSHIP_CREATED_SUCCESS
-            );
-        } catch (InvalidArgumentException $exception) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                $this->mapGroupMembershipErrorMessage($exception->getMessage())
-            );
-        } catch (Throwable $exception) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_GROUP_MEMBERSHIP_CREATE_FAILED
-            );
-        }
-    }
-
-    /**
-     * POST /admin/users/{id}/groups/{groupId}/update - Updates membership expiry or status.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response A redirect or a re-rendered detail page on error.
-     */
-    #[Route('POST', '/{id}/groups/{groupId}/update')]
-    public function updateUserGroupMembership(Request $request, Response $response): Response
-    {
-        $userId = $this->routeArgument($request, 'id');
-        $groupId = $this->routeArgument($request, 'groupId');
-        $authUsername = (string) $request->getAttribute('auth_username', '');
-
-        if ($this->isValidUuid($userId) === false || $this->isValidUuid($groupId) === false) {
-            return $this->notFound($response, 'The requested identifiers are not valid.');
-        }
-
-        $user = $this->userService->getUserById($userId);
-        if ($user === null) {
-            return $this->notFound($response, 'The requested user was not found.');
-        }
-
-        $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
-        if ($isSuperadmin === false && $this->userGroupService->isAdministrativeGroupId($groupId)) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_ADMIN_GROUP_MODIFY_FORBIDDEN
-            );
-        }
-
-        $existingMembership = $this->userGroupService->getMembership($userId, $groupId);
-        if ($existingMembership === null) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
-            );
-        }
-
-        $body = $request->getParsedBody();
-        $accessExpiry = $this->formString($body, 'access_expiry');
-        $hasAccess = $this->formString($body, 'has_access') === '1';
-
-        if ($accessExpiry === '') {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_GROUP_MEMBERSHIP_EXPIRY_REQUIRED
-            );
-        }
-
-        $accessGranted = is_string($existingMembership['access_granted'] ?? null)
-            ? $existingMembership['access_granted']
-            : '';
-
-        if ($accessGranted === '') {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_GROUP_MEMBERSHIP_MISSING_GRANTED
-            );
-        }
-
-        try {
-            $updatedMembership = $this->userGroupService->updateMembership(
-                $userId,
-                $groupId,
-                $accessGranted,
-                $accessExpiry,
-                $hasAccess
-            );
-
-            if ($updatedMembership === null) {
-                return $this->renderUserEditWithGroupError(
-                    $request,
-                    $response,
-                    $user,
-                    self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
-                );
-            }
-
-            return $this->redirectWithSuccess(
-                $response,
-                '/admin/users/' . $userId,
-                self::MESSAGE_GROUP_MEMBERSHIP_UPDATED_SUCCESS
-            );
-        } catch (InvalidArgumentException $exception) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                $this->mapGroupMembershipErrorMessage($exception->getMessage())
-            );
-        }
-    }
-
-    /**
-     * POST /admin/users/{id}/groups/{groupId}/remove - Disables access for a membership.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response A redirect or a re-rendered detail page on error.
-     */
-    #[Route('POST', '/{id}/groups/{groupId}/remove')]
-    public function removeUserFromGroup(Request $request, Response $response): Response
-    {
-        $userId = $this->routeArgument($request, 'id');
-        $groupId = $this->routeArgument($request, 'groupId');
-        $authUsername = (string) $request->getAttribute('auth_username', '');
-
-        if ($this->isValidUuid($userId) === false || $this->isValidUuid($groupId) === false) {
-            return $this->notFound($response, 'The requested identifiers are not valid.');
-        }
-
-        $user = $this->userService->getUserById($userId);
-        if ($user === null) {
-            return $this->notFound($response, 'The requested user was not found.');
-        }
-
-        $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
-        if ($isSuperadmin === false && $this->userGroupService->isAdministrativeGroupId($groupId)) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                self::MESSAGE_ADMIN_GROUP_DISABLE_FORBIDDEN
-            );
-        }
-
-        try {
-            $disabled = $this->userGroupService->removeMember($userId, $groupId);
-            if ($disabled === false) {
-                return $this->renderUserEditWithGroupError(
-                    $request,
-                    $response,
-                    $user,
-                    self::MESSAGE_GROUP_MEMBERSHIP_NOT_FOUND
-                );
-            }
-
-            return $this->redirectWithSuccess(
-                $response,
-                '/admin/users/' . $userId,
-                self::MESSAGE_GROUP_MEMBERSHIP_DISABLED_SUCCESS
-            );
-        } catch (InvalidArgumentException $exception) {
-            return $this->renderUserEditWithGroupError(
-                $request,
-                $response,
-                $user,
-                $this->mapGroupMembershipErrorMessage($exception->getMessage())
-            );
-        }
-    }
 
     /**
      * POST /admin/users - Creates a new user from form data.
@@ -634,6 +378,9 @@ class UserAdminController extends AbstractAdminController
      */
     private function buildGroupDataForUser(string $userId, string $authUsername): array
     {
+        $membershipDefaultAccessGranted = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $membershipDefaultAccessExpiry = $membershipDefaultAccessGranted->add(new DateInterval('P2Y'));
+
         $memberships = $this->userGroupService->getMembershipsByUserId($userId);
         $groups = $this->userGroupService->getAllGroups();
         $isSuperadmin = $this->userService->isSuperadminUsername($authUsername);
@@ -685,69 +432,9 @@ class UserAdminController extends AbstractAdminController
             'group_memberships' => $membershipsWithGroup,
             'available_groups'  => $availableGroups,
             'is_superadmin'     => $isSuperadmin,
+            'group_membership_default_access_granted' => $membershipDefaultAccessGranted->format('Y-m-d H:i:s'),
+            'group_membership_default_access_expiry' => $membershipDefaultAccessExpiry->format('Y-m-d H:i:s'),
         ];
     }
 
-    /**
-        * Renders the user edit page with a group-management error message.
-     *
-     * @param Request               $request   The incoming request.
-     * @param Response              $response  The outgoing response.
-     * @param array<string, mixed>  $user      The user record.
-     * @param string                $errorText The message to display.
-     * @return Response The rendered edit page.
-     */
-    private function renderUserEditWithGroupError(
-        Request $request,
-        Response $response,
-        array $user,
-        string $errorText
-    ): Response {
-        $userId = (string) ($user['user_id'] ?? '');
-        $authUsername = (string) $request->getAttribute('auth_username', '');
-        $groupData = $userId !== '' ? $this->buildGroupDataForUser($userId, $authUsername) : [
-            'group_memberships' => [],
-            'available_groups'  => [],
-            'is_superadmin'     => false,
-        ];
-
-        return $this->twig->render($response, 'admin/users/edit.twig', array_merge([
-            'pageTitle'    => 'Edit User',
-            'user'         => $user,
-            'auth_user_id' => (string) $request->getAttribute('auth_user_id', ''),
-            'csrf_token'   => $this->getCsrfToken($request),
-            'group_error'  => $errorText,
-        ], $groupData));
-    }
-
-    /**
-     * Maps internal validation errors to end-user-friendly messages.
-     *
-     * @param string $message The internal exception message.
-     * @return string A user-facing message.
-     */
-    private function mapGroupMembershipErrorMessage(string $message): string
-    {
-        if (str_contains($message, 'valid UUID')) {
-            return self::MESSAGE_GROUP_INVALID;
-        }
-
-        if (str_contains($message, 'does not exist')) {
-            return self::MESSAGE_GROUP_MISSING;
-        }
-
-        if (str_contains($message, 'UTC format')) {
-            return self::MESSAGE_GROUP_DATE_FORMAT_INVALID;
-        }
-
-        if (str_contains($message, 'later than access_granted')) {
-            return self::MESSAGE_GROUP_EXPIRY_BEFORE_GRANTED;
-        }
-
-        if (str_contains($message, 'two years')) {
-            return self::MESSAGE_GROUP_MAX_DURATION_EXCEEDED;
-        }
-
-        return self::MESSAGE_GROUP_UPDATE_FAILED;
-    }
 }

@@ -15,6 +15,7 @@ use App\Middleware\AuthMiddleware;
 use App\Services\UserGroupService;
 use InvalidArgumentException;
 use Lampfire\Controllers\AbstractRestController;
+use Lampfire\Services\UserService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -29,13 +30,20 @@ class UserGroupController extends AbstractRestController
     private UserGroupService $userGroupService;
 
     /**
+     * @var UserService Service used to authorize admin API actions.
+     */
+    private UserService $userService;
+
+    /**
      * Creates the user group controller.
      *
      * @param UserGroupService $userGroupService The user group service.
+     * @param UserService $userService The user service.
      */
-    public function __construct(UserGroupService $userGroupService)
+    public function __construct(UserGroupService $userGroupService, UserService $userService)
     {
         $this->userGroupService = $userGroupService;
+        $this->userService = $userService;
     }
 
     /**
@@ -47,6 +55,10 @@ class UserGroupController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read user groups.');
+        }
+
         $groups = $this->userGroupService->getAllGroups();
 
         return $this->prepareJsonResponse($response, ['data' => $groups]);
@@ -61,6 +73,10 @@ class UserGroupController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read user groups.');
+        }
+
         $groupId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($groupId) === false) {
@@ -85,6 +101,10 @@ class UserGroupController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create user groups.');
+        }
+
         $body        = $request->getParsedBody();
         $groupName   = $this->extractRequiredStringFromBodyData($body, 'group_name');
         $description = $this->extractOptionalStringFromBodyData($body, 'description');
@@ -111,6 +131,10 @@ class UserGroupController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update user groups.');
+        }
+
         $groupId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($groupId) === false) {
@@ -147,10 +171,23 @@ class UserGroupController extends AbstractRestController
      */
     public function delete(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_DELETE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to delete user groups.');
+        }
+
         $groupId = $this->routeArgument($request, 'id');
 
         if ($this->isValidUuid($groupId) === false) {
             return $this->prepareJsonErrorResponse($response, 400, 'Bad Request', 'The id parameter must be a valid UUID v4.');
+        }
+
+        if ($this->userGroupService->isAdministrativeGroupId($groupId)) {
+            return $this->prepareJsonErrorResponse(
+                $response,
+                403,
+                'Forbidden',
+                'The administrative user group cannot be deleted.'
+            );
         }
 
         $deleted = $this->userGroupService->deleteGroup($groupId);
@@ -160,5 +197,20 @@ class UserGroupController extends AbstractRestController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Returns true when the authenticated user has the required admin permission token.
+     *
+     * @param Request $request The incoming request.
+     * @param string $permissionToken The required permission token.
+     * @return bool True when authorized.
+     */
+    private function isAuthorized(Request $request, string $permissionToken): bool
+    {
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        return $this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, $permissionToken);
     }
 }

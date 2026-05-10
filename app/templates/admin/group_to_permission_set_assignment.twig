@@ -1,0 +1,77 @@
+{% extends "admin/layout.twig" %}
+
+{% block admin_content %}
+<header class="page-header">
+    <h1>Group to Permission Set Assignment</h1>
+</header>
+
+<div
+    data-group-to-permission-set-assignment-root
+    data-csrf-token="{{ csrf_token }}"
+>
+    <div id="group-assignment-message" class="alert" style="display: none;"></div>
+
+    <section class="detail-section">
+        <h2>User Group Permission Set Assignments</h2>
+        <p class="membership-note">User groups receive permissions through permission sets. Assign a group to a permission set here.</p>
+
+        <form id="group-assignment-form" class="admin-form">
+            <input type="hidden" id="group_assignment_user_group_id_original" name="group_assignment_user_group_id_original" />
+            <input type="hidden" id="group_assignment_permission_set_id_original" name="group_assignment_permission_set_id_original" />
+            <div>
+                <label for="group_assignment_user_group_id">User Group</label>
+                <select id="group_assignment_user_group_id" name="user_group_id" required></select>
+            </div>
+            <div>
+                <label for="group_assignment_permission_set_id">Permission Set</label>
+                <select id="group_assignment_permission_set_id" name="permission_set_id" required></select>
+            </div>
+            <div>
+                <label for="group_assignment_access_granted">Access Granted (UTC)</label>
+                <input type="text" id="group_assignment_access_granted" name="access_granted" required />
+            </div>
+            <div>
+                <label for="group_assignment_access_expiry">Access Expiry (UTC)</label>
+                <input type="text" id="group_assignment_access_expiry" name="access_expiry" required />
+            </div>
+            <div>
+                <label for="group_assignment_has_access">Access Status</label>
+                <select id="group_assignment_has_access" name="has_access" required>
+                    <option value="1">Active</option>
+                    <option value="0">Disabled</option>
+                </select>
+            </div>
+            <div>
+                <label for="group_assignment_notes">Notes</label>
+                <input type="text" id="group_assignment_notes" name="notes" />
+            </div>
+            <footer>
+                <button type="submit" id="group-assignment-submit">Create Assignment</button>
+                <button type="button" id="group-assignment-cancel" style="display: none;">Cancel Edit</button>
+            </footer>
+        </form>
+
+        <p class="membership-note">Date format must be YYYY-MM-DD HH:MM:SS in UTC.</p>
+
+        <div class="table-wrap">
+            <table class="data" id="group-assignments-table">
+                <thead>
+                    <tr>
+                        <th>User Group</th>
+                        <th>Permission Set</th>
+                        <th>Granted</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="/js/group_to_permission_set_assignment.js"></script>
+{% endblock %}

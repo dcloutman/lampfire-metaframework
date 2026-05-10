@@ -58,6 +58,10 @@ class UserGroupMembershipController extends AbstractRestController
      */
     public function get(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_MEMBERSHIP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read user group memberships.');
+        }
+
         $params      = $request->getQueryParams();
         $userGroupId = $params['user_group_id'] ?? null;
         $userId      = $params['user_id'] ?? null;
@@ -91,6 +95,10 @@ class UserGroupMembershipController extends AbstractRestController
      */
     public function getById(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_MEMBERSHIP_READ') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to read user group memberships.');
+        }
+
         $userId      = $this->routeArgument($request, 'userId');
         $userGroupId = $this->routeArgument($request, 'userGroupId');
 
@@ -116,12 +124,16 @@ class UserGroupMembershipController extends AbstractRestController
      */
     public function post(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_MEMBERSHIP_CREATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to create user group memberships.');
+        }
+
         $body          = $request->getParsedBody();
         $userId        = $this->extractRequiredStringFromBodyData($body, 'user_id');
         $userGroupId   = $this->extractRequiredStringFromBodyData($body, 'user_group_id');
         $accessGranted = $this->extractRequiredStringFromBodyData($body, 'access_granted');
         $accessExpiry  = $this->extractRequiredStringFromBodyData($body, 'access_expiry');
-        $hasAccess     = is_array($body) && array_key_exists('has_access', $body) ? (bool) $body['has_access'] : false;
+        $hasAccess     = $this->parseHasAccessFromBody($body);
 
         if ($userId === null || $userGroupId === null || $accessGranted === null || $accessExpiry === null) {
             return $this->prepareJsonErrorResponse(
@@ -156,6 +168,10 @@ class UserGroupMembershipController extends AbstractRestController
      */
     public function put(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_MEMBERSHIP_UPDATE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to update user group memberships.');
+        }
+
         $userId      = $this->routeArgument($request, 'userId');
         $userGroupId = $this->routeArgument($request, 'userGroupId');
 
@@ -166,7 +182,7 @@ class UserGroupMembershipController extends AbstractRestController
         $body          = $request->getParsedBody();
         $accessGranted = $this->extractRequiredStringFromBodyData($body, 'access_granted');
         $accessExpiry  = $this->extractRequiredStringFromBodyData($body, 'access_expiry');
-        $hasAccess     = is_array($body) && array_key_exists('has_access', $body) ? (bool) $body['has_access'] : false;
+        $hasAccess     = $this->parseHasAccessFromBody($body);
 
         if ($accessGranted === null || $accessExpiry === null) {
             return $this->prepareJsonErrorResponse(
@@ -207,6 +223,10 @@ class UserGroupMembershipController extends AbstractRestController
      */
     public function delete(Request $request, Response $response): Response
     {
+        if ($this->isAuthorized($request, 'ADMIN_PERMISSION_USER_GROUP_MEMBERSHIP_DELETE') === false) {
+            return $this->prepareJsonErrorResponse($response, 403, 'Forbidden', 'You are not authorized to delete user group memberships.');
+        }
+
         $userId      = $this->routeArgument($request, 'userId');
         $userGroupId = $this->routeArgument($request, 'userGroupId');
         $authUsername = (string) $request->getAttribute('auth_username', '');
@@ -234,5 +254,53 @@ class UserGroupMembershipController extends AbstractRestController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Returns true when the authenticated user has the required admin permission token.
+     *
+     * @param Request $request The incoming request.
+     * @param string $permissionToken The required permission token.
+     * @return bool True when authorized.
+     */
+    private function isAuthorized(Request $request, string $permissionToken): bool
+    {
+        $authUserId = (string) $request->getAttribute('auth_user_id', '');
+        $authUsername = (string) $request->getAttribute('auth_username', '');
+
+        return $this->userService->isAuthorizedForUserWrite($authUserId, $authUsername, $permissionToken);
+    }
+
+    /**
+     * Parses the has_access body field into a strict boolean value.
+     *
+     * Accepts booleans, integers, and common string representations.
+     *
+     * @param array<string, mixed>|null $body The parsed request body.
+     * @return bool The parsed access flag.
+     */
+    private function parseHasAccessFromBody(?array $body): bool
+    {
+        if ($body === null || array_key_exists('has_access', $body) === false) {
+            return false;
+        }
+
+        $rawValue = $body['has_access'];
+
+        if (is_bool($rawValue)) {
+            return $rawValue;
+        }
+
+        if (is_int($rawValue)) {
+            return $rawValue === 1;
+        }
+
+        if (is_string($rawValue)) {
+            $normalized = strtolower(trim($rawValue));
+
+            return $normalized === '1' || $normalized === 'true' || $normalized === 'yes' || $normalized === 'on';
+        }
+
+        return false;
     }
 }

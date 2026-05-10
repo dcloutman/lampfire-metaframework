@@ -147,8 +147,10 @@
                 <td>{{ membership.access_expiry }}</td>
                 <td class="actions">
                     {% if membership.can_remove %}
-                    <form method="post" action="/admin/users/{{ user.user_id }}/groups/{{ membership.user_group_id }}/update" class="membership-update-form">
+                    <form method="post" action="/api/user-group-memberships/{{ user.user_id }}/{{ membership.user_group_id }}" class="membership-update-form">
+                        <input type="hidden" name="_METHOD" value="PUT" />
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <input type="hidden" name="access_granted" value="{{ membership.access_granted }}" />
                         <input type="text" name="access_expiry" value="{{ membership.access_expiry }}" required />
                         <select name="has_access" required>
                             <option value="1" {% if membership.has_access %}selected{% endif %}>Active</option>
@@ -156,7 +158,8 @@
                         </select>
                         <button type="submit">Update</button>
                     </form>
-                    <form method="post" action="/admin/users/{{ user.user_id }}/groups/{{ membership.user_group_id }}/remove" onsubmit="return confirm('Disable this user membership and keep its audit record?');" class="membership-disable-form">
+                    <form method="post" action="/api/user-group-memberships/{{ user.user_id }}/{{ membership.user_group_id }}" onsubmit="return confirm('Disable this user membership and keep its audit record?');" class="membership-disable-form">
+                        <input type="hidden" name="_METHOD" value="DELETE" />
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                         <button type="submit">Disable</button>
                     </form>
@@ -175,8 +178,12 @@
     {% endif %}
 
     {% if available_groups is defined and available_groups|length > 0 %}
-    <form method="post" action="/admin/users/{{ user.user_id }}/groups" class="admin-form" style="margin-top: 1rem;">
+    <form method="post" action="/api/user-group-memberships" class="admin-form" style="margin-top: 1rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="user_id" value="{{ user.user_id }}" />
+        <input type="hidden" name="access_granted" value="{{ group_membership_default_access_granted }}" />
+        <input type="hidden" name="access_expiry" value="{{ group_membership_default_access_expiry }}" />
+        <input type="hidden" name="has_access" value="1" />
 
         <div>
             <label for="user_group_id">Add User To Group</label>

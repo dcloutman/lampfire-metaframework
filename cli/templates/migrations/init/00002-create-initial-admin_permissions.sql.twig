@@ -830,6 +830,40 @@ INSERT INTO `PermissionSetPermissions` (
 );
 
 
+-- ### PERMISSION_SET_PERMISSION_UPDATE
+
+SET @permission_id = UUID();
+INSERT INTO `Permissions` (
+	`permission_id`,
+	`permission_token`,
+	`permission_title`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@permission_id,
+	'{{ ENV.ADMIN_PERMISSION_TOKEN_PREFIX }}PERMISSION_SET_PERMISSION_UPDATE',
+	'Update Permission Set Permission Assignments',
+	'Allows updating permission association metadata within permission sets.',
+	@now,
+	@now
+);
+
+INSERT INTO `PermissionSetPermissions` (
+	`permission_set_id`,
+	`permission_id`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_permission_set_id,
+	@permission_id,
+	'Automatically granted to the administrators permission set.',
+	@now,
+	@now
+);
+
+
 -- ### PERMISSION_SET_PERMISSION_DELETE
 
 SET @permission_id = UUID();
@@ -913,6 +947,40 @@ INSERT INTO `Permissions` (
 	'{{ ENV.ADMIN_PERMISSION_TOKEN_PREFIX }}PERMISSION_SET_MEMBER_READ',
 	'Read Permission Set Members',
 	'Allows reading user assignments within permission sets.',
+	@now,
+	@now
+);
+
+INSERT INTO `PermissionSetPermissions` (
+	`permission_set_id`,
+	`permission_id`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_permission_set_id,
+	@permission_id,
+	'Automatically granted to the administrators permission set.',
+	@now,
+	@now
+);
+
+
+-- ### PERMISSION_SET_MEMBER_UPDATE
+
+SET @permission_id = UUID();
+INSERT INTO `Permissions` (
+	`permission_id`,
+	`permission_token`,
+	`permission_title`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@permission_id,
+	'{{ ENV.ADMIN_PERMISSION_TOKEN_PREFIX }}PERMISSION_SET_MEMBER_UPDATE',
+	'Update Permission Set Members',
+	'Allows updating direct user assignments within permission sets.',
 	@now,
 	@now
 );
@@ -1035,6 +1103,40 @@ INSERT INTO `PermissionSetPermissions` (
 
 
 -- ### PERMISSION_SET_USER_GROUP_UPDATE
+
+SET @permission_id = UUID();
+INSERT INTO `Permissions` (
+	`permission_id`,
+	`permission_token`,
+	`permission_title`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@permission_id,
+	'{{ ENV.ADMIN_PERMISSION_TOKEN_PREFIX }}PERMISSION_SET_USER_GROUP_UPDATE',
+	'Update Permission Set User Group Assignments',
+	'Allows updating user group assignment metadata within permission sets.',
+	@now,
+	@now
+);
+
+INSERT INTO `PermissionSetPermissions` (
+	`permission_set_id`,
+	`permission_id`,
+	`notes`,
+	`created_at`,
+	`updated_at`
+) VALUES (
+	@administrators_permission_set_id,
+	@permission_id,
+	'Automatically granted to the administrators permission set.',
+	@now,
+	@now
+);
+
+
+-- ### PERMISSION_SET_USER_GROUP_DELETE
 
 SET @permission_id = UUID();
 INSERT INTO `Permissions` (

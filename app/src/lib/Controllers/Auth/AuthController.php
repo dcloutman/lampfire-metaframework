@@ -11,25 +11,21 @@ declare(strict_types=1);
 
 namespace App\Controllers\Auth;
 
-use App\Middleware\AdminAuthorizationMiddleware;
-use App\Middleware\AuthMiddleware;
 use App\Services\AuthService;
 use Lampfire\Controllers\AbstractAdminController;
-use Lampfire\Routing\Route;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
 
 class AuthController extends AbstractAdminController
 {
-    protected string $routePrefix = '/admin';
+    protected string $routePrefix = '/admin/login';
 
     private const COOKIE_NAME = 'session_token';
     private const SESSION_LIFETIME_SECONDS = 7200;
     private const MESSAGE_USERNAME_PASSWORD_REQUIRED = 'Username and password are required.';
     private const MESSAGE_INVALID_USERNAME_PASSWORD = 'Invalid username or password.';
     private const MESSAGE_SIGN_IN_SUCCESS = 'You signed in successfully.';
-    private const MESSAGE_SIGN_OUT_SUCCESS = 'You signed out successfully.';
 
     /**
      * @var AuthService Service for Paseto token authentication.
@@ -48,34 +44,14 @@ class AuthController extends AbstractAdminController
         $this->authService = $authService;
     }
 
-    /**
-     * GET /admin/login - Renders the login form.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response The rendered login page.
-     */
-    #[Route('GET', '/login')]
-    public function showLoginForm(Request $request, Response $response): Response
+    public function get(Request $request, Response $response): Response
     {
         return $this->twig->render($response, 'admin/login.twig', array_merge([
             'pageTitle' => 'Admin Login',
         ], $this->getFlashViewData($request)));
     }
 
-    /**
-     * POST /admin/login - Processes the login form submission.
-     *
-     * On success, sets an HTTP-only cookie with the Paseto token and
-     * redirects to the admin dashboard. On failure, re-renders the login
-     * form with an error message.
-     *
-     * @param Request  $request  The incoming request with form data.
-     * @param Response $response The outgoing response.
-     * @return Response A redirect or re-rendered login page.
-     */
-    #[Route('POST', '/login')]
-    public function handleLogin(Request $request, Response $response): Response
+    public function post(Request $request, Response $response): Response
     {
         $body     = $request->getParsedBody();
         $username = $this->formString($body, 'username');
@@ -113,46 +89,5 @@ class AuthController extends AbstractAdminController
             ->withHeader('Set-Cookie', $cookieHeader)
             ->withHeader('Location', $this->urlWithFlash('/admin/dashboard', self::MESSAGE_SIGN_IN_SUCCESS, null))
             ->withStatus(302);
-    }
-
-    /**
-     * GET /admin/logout - Clears the session cookie and redirects to login.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response A redirect to the login page.
-     */
-    #[Route('GET', '/logout')]
-    public function handleLogout(Request $request, Response $response): Response
-    {
-        $cookieHeader = sprintf(
-            '%s=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-            self::COOKIE_NAME
-        );
-
-        return $response
-            ->withHeader('Set-Cookie', $cookieHeader)
-            ->withHeader('Location', $this->urlWithFlash('/admin/login', self::MESSAGE_SIGN_OUT_SUCCESS, null))
-            ->withStatus(302);
-    }
-
-    /**
-     * GET /admin/dashboard - Renders the admin dashboard landing page.
-     *
-     * @param Request  $request  The incoming request.
-     * @param Response $response The outgoing response.
-     * @return Response The rendered dashboard page.
-     */
-    #[Route('GET', '/dashboard', middleware: [AdminAuthorizationMiddleware::class, AuthMiddleware::class])]
-    public function showDashboard(Request $request, Response $response): Response
-    {
-        $username = $request->getAttribute('auth_username');
-        $displayName = is_string($username) ? $username : 'Admin';
-
-        return $this->twig->render($response, 'admin/dashboard.twig', array_merge([
-            'pageTitle'  => 'Dashboard',
-            'username'   => $displayName,
-            'csrf_token' => $this->getCsrfToken($request),
-        ], $this->getFlashViewData($request)));
     }
 }
