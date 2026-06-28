@@ -21,6 +21,23 @@ use Attribute;
 class Route
 {
     /**
+     * The HTTP method, such as GET, POST, PUT, or DELETE.
+     */
+    public readonly string $method;
+
+    /**
+     * The route path relative to the class-level RouteGroup prefix.
+     */
+    public readonly string $path;
+
+    /**
+     * Fully qualified middleware class names for this route only.
+     *
+     * @var array<string>
+     */
+    public readonly array $middleware;
+
+    /**
      * Creates a route binding.
      *
      * @param string        $method     The HTTP method, such as GET, POST, PUT, or DELETE.
@@ -28,9 +45,12 @@ class Route
      * @param array<string> $middleware Fully qualified middleware class names for this route only.
      */
     public function __construct(
-        public readonly string $method,
-        public readonly string $path,
-        public readonly array $middleware = [],
+        string $method,
+        string $path,
+        array $middleware = [],
     ) {
+        $this->method = $method;
+        $this->path = $path;
+        $this->middleware = $middleware;
     }
 }
