@@ -9,6 +9,7 @@ use Cli\Console\AbstractCommand;
 use Cli\Console\Input;
 use Cli\Console\Output;
 use Dotenv\Dotenv;
+use Lampfire\Config\AppSettings;
 use RuntimeException;
 
 /**
@@ -48,6 +49,8 @@ final class StartCommand extends AbstractCommand
 
             $output->writeln();
             $output->info('Docker services are running.');
+            $appSettings = new AppSettings($projectRoot);
+            $output->info(sprintf('Access the development environment at %s', $appSettings->getApplicationUrl()));
             return 0;
         } catch (RuntimeException $exception) {
             $output->error($exception->getMessage());
